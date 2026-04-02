@@ -1,0 +1,5 @@
+{
+  "name": "EduManage THCS - Hệ thống Quản lý Giáo dục Thông minh",
+  "description": "Hệ thống quản lý điểm số, nề nếp và báo cáo học tập tích hợp AI dành cho khối THCS.",
+  "requestFramePermissions": []
+}
