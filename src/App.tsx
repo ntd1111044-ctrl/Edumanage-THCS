@@ -92,6 +92,7 @@ export default function App() {
   const [isLoadingAI, setIsLoadingAI] = useState(false);
   const [aiResponse, setAiResponse] = useState('');
   const [showApiModal, setShowApiModal] = useState(false);
+  const [targetStudentId, setTargetStudentId] = useState<string>('');
 
   // Show modal if no API key is provided
   useEffect(() => {
@@ -299,18 +300,39 @@ export default function App() {
         const ws = wb.Sheets[wsname];
         const rows = XLSX.utils.sheet_to_json(ws, { header: 1 }) as any[][];
         
-        // Skip header if it looks like a header
-        const startIndex = (rows[0] && (String(rows[0][0]).toLowerCase().includes('tên') || String(rows[0][0]).toLowerCase().includes('name'))) ? 1 : 0;
+        let nameIdx = 0;
+        let classIdx = 1;
+        let startIndex = 0;
+
+        if (rows[0]) {
+          const headerRow = rows[0].map(c => String(c).toLowerCase().trim());
+          const foundNameIdx = headerRow.findIndex(c => c.includes('tên') || c.includes('name') || c.includes('họ'));
+          const foundClassIdx = headerRow.findIndex(c => c.includes('lớp') || c.includes('class'));
+          
+          if (foundNameIdx !== -1) {
+            nameIdx = foundNameIdx;
+            startIndex = 1;
+          } else {
+            // Fallback assumption: if it has 3 columns, STT is 0, Name is 1, Class is 2
+            if (rows[0].length >= 3) {
+              nameIdx = 1;
+              classIdx = 2;
+            }
+          }
+          if (foundClassIdx !== -1) {
+            classIdx = foundClassIdx;
+          }
+        }
         
         const newStudents: Student[] = [];
         for (let i = startIndex; i < rows.length; i++) {
           const row = rows[i];
-          if (!row || !row[0]) continue; // Skip empty rows
+          if (!row || !row[nameIdx]) continue; // Skip empty rows or rows without name
           
           newStudents.push({
             id: Math.random().toString(36).substr(2, 9),
-            name: String(row[0]),
-            class: row[1] ? String(row[1]) : 'Chưa phân lớp'
+            name: String(row[nameIdx]),
+            class: row[classIdx] ? String(row[classIdx]) : 'Chưa phân lớp'
           });
         }
 
@@ -638,7 +660,10 @@ export default function App() {
                             AI Report
                           </button>
                           <button 
-                            onClick={() => setActiveTab('behavior')}
+                            onClick={() => {
+                              setTargetStudentId(student.id);
+                              setActiveTab('behavior');
+                            }}
                             className="px-4 py-2 border border-slate-200 text-slate-600 rounded-lg text-sm font-medium hover:bg-slate-50 transition-colors"
                           >
                             Ghi nề nếp
@@ -668,7 +693,13 @@ export default function App() {
                     <div className="space-y-6">
                       <div>
                         <label className="block text-sm font-bold text-slate-700 mb-2">Học sinh</label>
-                        <select id="behavior-student" className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500">
+                        <select 
+                          id="behavior-student" 
+                          value={targetStudentId}
+                          onChange={(e) => setTargetStudentId(e.target.value)}
+                          className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500"
+                        >
+                          <option value="">-- Chọn học sinh --</option>
                           {data.students.map(s => <option key={s.id} value={s.id}>{s.name} - {s.class}</option>)}
                         </select>
                       </div>
