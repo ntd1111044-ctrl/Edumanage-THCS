@@ -437,6 +437,50 @@ export default function App() {
     e.target.value = '';
   };
 
+  const handleUpdateAvatar = (studentId: string, e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+      const dataUrl = evt.target?.result as string;
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        const MAX_SIZE = 150;
+        let width = img.width;
+        let height = img.height;
+
+        if (width > height) {
+          if (width > MAX_SIZE) {
+            height *= MAX_SIZE / width;
+            width = MAX_SIZE;
+          }
+        } else {
+          if (height > MAX_SIZE) {
+            width *= MAX_SIZE / height;
+            height = MAX_SIZE;
+          }
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+        if (ctx) {
+          ctx.drawImage(img, 0, 0, width, height);
+          const compressedBase64 = canvas.toDataURL('image/jpeg', 0.8);
+          setData(prev => ({
+            ...prev,
+            students: prev.students.map(s => s.id === studentId ? { ...s, avatar: compressedBase64 } : s)
+          }));
+        }
+      };
+      img.src = dataUrl;
+    };
+    reader.readAsDataURL(file);
+    e.target.value = '';
+  };
+
   // Helper to parse **bold** and *italic* simply
   const parseInlineMarkdown = (text: string): TextRun[] => {
     const runs: TextRun[] = [];
@@ -710,9 +754,22 @@ export default function App() {
                       <div key={student.id} className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition-all group">
                         <div className="flex items-start justify-between mb-4">
                           <div className="flex items-center gap-4">
-                            <div className="w-14 h-14 rounded-2xl bg-slate-100 flex items-center justify-center text-slate-400 text-xl font-bold">
-                              {student.name.charAt(0)}
-                            </div>
+                            <label className="relative block w-14 h-14 rounded-2xl bg-slate-100 overflow-hidden shrink-0 border border-slate-200 shadow-sm cursor-pointer group">
+                              <img 
+                                src={student.avatar || `https://api.dicebear.com/7.x/notionists/svg?seed=${encodeURIComponent(student.name)}&backgroundColor=f8fafc`} 
+                                alt={student.name} 
+                                className="w-full h-full object-cover mix-blend-multiply transition-all group-hover:blur-[2px]" 
+                              />
+                              <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 bg-black/30 text-white text-[10px] font-bold transition-opacity">
+                                Đổi ảnh
+                              </div>
+                              <input 
+                                type="file" 
+                                accept="image/*" 
+                                className="hidden" 
+                                onChange={(e) => handleUpdateAvatar(student.id, e)} 
+                              />
+                            </label>
                             <div>
                               <h4 className="font-bold text-lg group-hover:text-blue-600 transition-colors">{student.name}</h4>
                               <p className="text-slate-500 text-sm">Lớp {student.class}</p>
