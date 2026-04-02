@@ -286,6 +286,52 @@ export default function App() {
     }
   };
 
+  const importFromExcel = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+      try {
+        const bstr = evt.target?.result;
+        const wb = XLSX.read(bstr, { type: 'binary' });
+        const wsname = wb.SheetNames[0];
+        const ws = wb.Sheets[wsname];
+        const rows = XLSX.utils.sheet_to_json(ws, { header: 1 }) as any[][];
+        
+        // Skip header if it looks like a header
+        const startIndex = (rows[0] && (String(rows[0][0]).toLowerCase().includes('tên') || String(rows[0][0]).toLowerCase().includes('name'))) ? 1 : 0;
+        
+        const newStudents: Student[] = [];
+        for (let i = startIndex; i < rows.length; i++) {
+          const row = rows[i];
+          if (!row || !row[0]) continue; // Skip empty rows
+          
+          newStudents.push({
+            id: Math.random().toString(36).substr(2, 9),
+            name: String(row[0]),
+            class: row[1] ? String(row[1]) : 'Chưa phân lớp'
+          });
+        }
+
+        if (newStudents.length > 0) {
+          setData(prev => ({
+            ...prev,
+            students: [...prev.students, ...newStudents]
+          }));
+          Swal.fire('Thành công', `Đã nhập ${newStudents.length} học sinh từ Excel`, 'success');
+        } else {
+          Swal.fire('Chú ý', 'Không tìm thấy dữ liệu hợp lệ trong file', 'warning');
+        }
+      } catch (err: any) {
+        Swal.fire('Lỗi', 'Không thể đọc file Excel. Định dạng không hợp lệ.', 'error');
+      }
+    };
+    reader.readAsBinaryString(file);
+    // Reset file input value
+    e.target.value = '';
+  };
+
   // Helper to parse **bold** and *italic* simply
   const parseInlineMarkdown = (text: string): TextRun[] => {
     const runs: TextRun[] = [];
@@ -532,10 +578,22 @@ export default function App() {
               >
                 <div className="flex justify-between items-center">
                   <h2 className="text-2xl font-bold">Danh sách học sinh</h2>
-                  <button className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors shadow-lg shadow-blue-200">
-                    <Plus size={20} />
-                    Thêm học sinh
-                  </button>
+                  <div className="flex gap-3">
+                    <label className="flex items-center gap-2 px-4 py-2 border border-slate-200 text-slate-700 bg-white rounded-xl hover:bg-slate-50 transition-colors cursor-pointer font-medium shadow-sm">
+                      <Upload size={20} />
+                      Nhập từ Excel
+                      <input 
+                        type="file" 
+                        accept=".xlsx, .xls" 
+                        className="hidden" 
+                        onChange={importFromExcel}
+                      />
+                    </label>
+                    <button className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors shadow-lg shadow-blue-200">
+                      <Plus size={20} />
+                      Thêm học sinh
+                    </button>
+                  </div>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
