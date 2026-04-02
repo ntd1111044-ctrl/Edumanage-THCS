@@ -354,6 +354,89 @@ export default function App() {
     e.target.value = '';
   };
 
+  const importGradesFromExcel = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+      try {
+        const bstr = evt.target?.result;
+        const wb = XLSX.read(bstr, { type: 'binary' });
+        const wsname = wb.SheetNames[0];
+        const ws = wb.Sheets[wsname];
+        const rows = XLSX.utils.sheet_to_json(ws, { header: 1 }) as any[][];
+        
+        if (rows.length < 2) throw new Error('File không có dữ liệu hợp lệ');
+        
+        const headerRow = rows[0].map(c => String(c).toLowerCase().trim());
+        const nameIdx = headerRow.findIndex(c => c.includes('tên') || c.includes('họ'));
+        const finalNameIdx = nameIdx === -1 ? 1 : nameIdx; // fallback to 1
+
+        const subjectCols: { colIdx: number, subjectId: string }[] = [];
+        data.subjects.forEach(subj => {
+          const sName = subj.name.toLowerCase();
+          const colIdx = headerRow.findIndex(c => c.includes(sName));
+          if (colIdx !== -1) {
+            subjectCols.push({ colIdx, subjectId: subj.id });
+          }
+        });
+
+        if (subjectCols.length === 0) {
+          Swal.fire('Chú ý', 'Không tìm thấy tên cột tương ứng học phần nào trong file (vd: "Toán học", "Ngữ văn").', 'warning');
+          return;
+        }
+
+        const newGrades: Grade[] = [];
+        let importedCount = 0;
+
+        for (let i = 1; i < rows.length; i++) {
+          const row = rows[i];
+          if (!row || !row[finalNameIdx]) continue;
+          
+          const studentName = String(row[finalNameIdx]).trim().toLowerCase();
+          const student = data.students.find(s => s.name.toLowerCase() === studentName);
+          
+          if (student) {
+            let addedForStudent = false;
+            subjectCols.forEach(({ colIdx, subjectId }) => {
+              let val = row[colIdx];
+              if (val !== undefined && val !== null && val !== '') {
+                const numVal = parseFloat(String(val).replace(',', '.'));
+                if (!isNaN(numVal) && numVal >= 0 && numVal <= 10) {
+                  newGrades.push({
+                    id: Math.random().toString(36).substr(2, 9),
+                    studentId: student.id,
+                    subjectId,
+                    type: 'regular',
+                    value: numVal,
+                    date: new Date().toISOString()
+                  });
+                  addedForStudent = true;
+                }
+              }
+            });
+            if (addedForStudent) importedCount++;
+          }
+        }
+
+        if (newGrades.length > 0) {
+          setData(prev => ({
+            ...prev,
+            grades: [...prev.grades, ...newGrades]
+          }));
+          Swal.fire('Thành công', `Đã nhập ${newGrades.length} cột điểm cho ${importedCount} học sinh`, 'success');
+        } else {
+          Swal.fire('Chú ý', 'Không có điểm nào được cập nhật. Bạn cần đảm bảo cột Tên học sinh phải khớp và đúng tên học phần.', 'warning');
+        }
+      } catch (err: any) {
+        Swal.fire('Lỗi', 'Không thể đọc file Excel. ' + err.message, 'error');
+      }
+    };
+    reader.readAsBinaryString(file);
+    e.target.value = '';
+  };
+
   // Helper to parse **bold** and *italic* simply
   const parseInlineMarkdown = (text: string): TextRun[] => {
     const runs: TextRun[] = [];
@@ -1009,7 +1092,16 @@ export default function App() {
                 <div className="flex justify-between items-center">
                   <h2 className="text-2xl font-bold">Quản lý điểm số</h2>
                   <div className="flex gap-3">
-                    <button className="px-4 py-2 bg-slate-900 text-white rounded-xl font-medium">Nhập điểm nhanh</button>
+                    <label className="flex items-center gap-2 px-4 py-2 bg-slate-900 text-white rounded-xl font-medium hover:bg-slate-800 transition-colors cursor-pointer shadow-lg">
+                      <Upload size={18} />
+                      Nhập điểm nhanh
+                      <input 
+                        type="file" 
+                        accept=".xlsx, .xls" 
+                        className="hidden" 
+                        onChange={importGradesFromExcel}
+                      />
+                    </label>
                   </div>
                 </div>
 
