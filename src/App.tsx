@@ -532,7 +532,7 @@ export default function App() {
           <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-600 to-orange-500 flex items-center justify-center text-white shrink-0">
             <GraduationCap size={24} />
           </div>
-          {isSidebarOpen && <h1 className="font-bold text-xl tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-orange-600">EduManage</h1>}
+          {isSidebarOpen && <h1 className="font-bold text-xl tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-orange-600">Diem's class</h1>}
         </div>
 
         <nav className="flex-1 px-3 space-y-1">
