@@ -14,6 +14,37 @@ export interface MockExam {
   priority?: number; // Điểm ưu tiên (nếu có)
 }
 
+export interface FundTransaction {
+  id: string;
+  type: 'in' | 'out';
+  amount: number;
+  date: string;
+  description: string;
+  studentId?: string;
+}
+
+export interface AttendanceRecord {
+  id: string;
+  studentId: string;
+  date: string;
+  status: 'present' | 'absent' | 'late';
+  note?: string;
+}
+
+export interface HomeworkTask {
+  id: string;
+  title: string;
+  dueDate: string;
+  description?: string;
+}
+
+export interface HomeworkSubmission {
+  id: string;
+  taskId: string;
+  studentId: string;
+  status: 'done' | 'missing' | 'late';
+}
+
 export interface Student {
   id: string;
   name: string;
@@ -21,6 +52,8 @@ export interface Student {
   avatar?: string;
   targetSchools?: TargetHighSchool[];
   mockExams?: MockExam[];
+  seatingRow?: number;
+  seatingCol?: number;
 }
 
 export interface BehaviorRecord {
@@ -54,6 +87,10 @@ export interface AppData {
   subjects: Subject[];
   grades: Grade[];
   behaviors: BehaviorRecord[];
+  funds: FundTransaction[];
+  attendance: AttendanceRecord[];
+  tasks: HomeworkTask[];
+  submissions: HomeworkSubmission[];
   settings: {
     theme: 'light' | 'dark';
     apiKey: string;
@@ -78,6 +115,10 @@ export const INITIAL_DATA: AppData = {
   ],
   grades: [],
   behaviors: [],
+  funds: [],
+  attendance: [],
+  tasks: [],
+  submissions: [],
   settings: {
     theme: 'light',
     apiKey: '',
