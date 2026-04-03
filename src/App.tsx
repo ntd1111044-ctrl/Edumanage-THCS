@@ -31,6 +31,7 @@ import {
   Zap,
   FlaskConical,
   MoreVertical,
+  FileSpreadsheet,
   Trash2,
   Save,
   Target,
@@ -95,7 +96,22 @@ const marked = new Marked();
 export default function App() {
   const [data, setData] = useState<AppData>(() => {
     const saved = localStorage.getItem('edumanage_data');
-    return saved ? JSON.parse(saved) : INITIAL_DATA;
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      return {
+        ...INITIAL_DATA,
+        ...parsed,
+        // Ensure new arrays are initialized if loading from an older local storage state
+        targetSchools: parsed.targetSchools || [],
+        mockExams: parsed.mockExams || [],
+        funds: parsed.funds || [],
+        attendance: parsed.attendance || [],
+        tasks: parsed.tasks || [],
+        submissions: parsed.submissions || [],
+        admissionScores2025: parsed.admissionScores2025 || []
+      };
+    }
+    return INITIAL_DATA;
   });
   
   const [activeTab, setActiveTab] = useState<'dashboard' | 'students' | 'grades' | 'behavior' | 'stats' | 'ai' | 'settings' | 'admission' | 'funds' | 'attendance' | 'tasks' | 'seating'>('dashboard');
@@ -242,6 +258,41 @@ export default function App() {
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Báo cáo tổng hợp");
     XLSX.writeFile(wb, `Bao_cao_EduManage_${dayjs().format('YYYYMMDD')}.xlsx`);
+  };
+
+  const downloadStudentTemplate = () => {
+    const templateData = [
+      { 'STT': 1, 'Họ tên': 'Nguyễn Văn A', 'Lớp': '9A1' },
+      { 'STT': 2, 'Họ tên': 'Trần Thị B', 'Lớp': '9A1' },
+      { 'STT': 3, 'Họ tên': 'Lê Văn C', 'Lớp': '9A2' },
+    ];
+    const ws = XLSX.utils.json_to_sheet(templateData);
+    ws['!cols'] = [{ wch: 5 }, { wch: 25 }, { wch: 10 }];
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Danh sách học sinh');
+    XLSX.writeFile(wb, 'Mau_Nhap_Hoc_Sinh.xlsx');
+    Swal.fire({ title: 'Tải thành công!', text: 'File mẫu danh sách học sinh đã được tải về.', icon: 'success', timer: 2000, showConfirmButton: false, toast: true, position: 'top-end' });
+  };
+
+  const downloadGradeTemplate = () => {
+    const subjectNames = data.subjects.map(s => s.name);
+    const sampleStudents = data.students.length > 0 
+      ? data.students.slice(0, 3).map((s, i) => {
+          const row: Record<string, any> = { 'STT': i + 1, 'Họ tên': s.name };
+          subjectNames.forEach(name => { row[name] = ''; });
+          return row;
+        })
+      : [
+          (() => { const r: Record<string, any> = { 'STT': 1, 'Họ tên': 'Nguyễn Văn A' }; subjectNames.forEach(n => { r[n] = 8.5; }); return r; })(),
+          (() => { const r: Record<string, any> = { 'STT': 2, 'Họ tên': 'Trần Thị B' }; subjectNames.forEach(n => { r[n] = 7.0; }); return r; })(),
+          (() => { const r: Record<string, any> = { 'STT': 3, 'Họ tên': 'Lê Văn C' }; subjectNames.forEach(n => { r[n] = 9.0; }); return r; })(),
+        ];
+    const ws = XLSX.utils.json_to_sheet(sampleStudents);
+    ws['!cols'] = [{ wch: 5 }, { wch: 25 }, ...subjectNames.map(() => ({ wch: 12 }))];
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Bảng điểm');
+    XLSX.writeFile(wb, 'Mau_Nhap_Diem.xlsx');
+    Swal.fire({ title: 'Tải thành công!', text: 'File mẫu nhập điểm đã được tải về.', icon: 'success', timer: 2000, showConfirmButton: false, toast: true, position: 'top-end' });
   };
 
   const exportAIToWord = async () => {
@@ -443,6 +494,80 @@ export default function App() {
           Swal.fire('Thành công', `Đã nhập ${newGrades.length} cột điểm cho ${importedCount} học sinh`, 'success');
         } else {
           Swal.fire('Chú ý', 'Không có điểm nào được cập nhật. Bạn cần đảm bảo cột Tên học sinh phải khớp và đúng tên học phần.', 'warning');
+        }
+      } catch (err: any) {
+        Swal.fire('Lỗi', 'Không thể đọc file Excel. ' + err.message, 'error');
+      }
+    };
+    reader.readAsBinaryString(file);
+    e.target.value = '';
+  };
+
+  const downloadAdmissionScoresTemplate = () => {
+    const templateData = [
+      { 'STT': 1, 'Tên trường': 'THPT Chuyên Lê Hồng Phong', 'Điểm chuẩn': 24.5 },
+      { 'STT': 2, 'Tên trường': 'THPT Nguyễn Thượng Hiền', 'Điểm chuẩn': 23.0 },
+      { 'STT': 3, 'Tên trường': 'THPT Gia Định', 'Điểm chuẩn': 22.5 },
+      { 'STT': 4, 'Tên trường': 'THPT Lê Quý Đôn', 'Điểm chuẩn': 22.0 },
+      { 'STT': 5, 'Tên trường': 'THPT Mạc Đĩnh Chi', 'Điểm chuẩn': 21.0 },
+    ];
+    const ws = XLSX.utils.json_to_sheet(templateData);
+    ws['!cols'] = [{ wch: 5 }, { wch: 35 }, { wch: 15 }];
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Điểm chuẩn');
+    XLSX.writeFile(wb, 'Mau_Diem_Chuan_2025.xlsx');
+    Swal.fire({ title: 'Tải thành công!', text: 'File định dạng điểm chuẩn tĩnh đã được tải về.', icon: 'success', timer: 2000, showConfirmButton: false, toast: true, position: 'top-end' });
+  };
+
+  const importAdmissionScoresFromExcel = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+      try {
+        const bstr = evt.target?.result;
+        const wb = XLSX.read(bstr, { type: 'binary' });
+        const wsname = wb.SheetNames[0];
+        const ws = wb.Sheets[wsname];
+        const rows = XLSX.utils.sheet_to_json(ws, { header: 1 }) as any[][];
+        
+        if (rows.length < 2) throw new Error('File không có dữ liệu hợp lệ');
+        
+        const headerRow = rows[0].map(c => String(c).toLowerCase().trim());
+        const nameIdx = headerRow.findIndex(c => c.includes('tên') || c.includes('trường') || c.includes('school'));
+        const scoreIdx = headerRow.findIndex(c => c.includes('điểm') || c.includes('chuẩn') || c.includes('score'));
+        
+        if (nameIdx === -1 || scoreIdx === -1) {
+          Swal.fire('Chú ý', 'Không tìm thấy cột "Tên trường" hoặc "Điểm chuẩn" hợp lệ trong file.', 'warning');
+          return;
+        }
+
+        const newScores = [];
+        for (let i = 1; i < rows.length; i++) {
+          const row = rows[i];
+          if (!row || !row[nameIdx] || row[scoreIdx] === undefined) continue;
+          
+          const name = String(row[nameIdx]).trim();
+          let score = parseFloat(String(row[scoreIdx]).replace(',', '.'));
+          
+          if (name && !isNaN(score)) {
+            newScores.push({
+              id: Math.random().toString(36).substr(2, 9),
+              name,
+              targetScore: score
+            });
+          }
+        }
+
+        if (newScores.length > 0) {
+          setData(prev => ({
+            ...prev,
+            admissionScores2025: newScores
+          }));
+          Swal.fire('Thành công', `Đã cập nhật ${newScores.length} trường chuẩn`, 'success');
+        } else {
+          Swal.fire('Chú ý', 'Không tìm thấy dữ liệu điểm chuẩn nào hợp lệ.', 'warning');
         }
       } catch (err: any) {
         Swal.fire('Lỗi', 'Không thể đọc file Excel. ' + err.message, 'error');
@@ -748,6 +873,14 @@ export default function App() {
                 <div className="flex justify-between items-center">
                   <h2 className="text-2xl font-bold">Danh sách học sinh</h2>
                   <div className="flex gap-3">
+                    <button
+                      onClick={downloadStudentTemplate}
+                      className="flex items-center gap-2 px-4 py-2 border border-emerald-200 text-emerald-700 bg-emerald-50 rounded-xl hover:bg-emerald-100 transition-colors font-medium shadow-sm"
+                      title="Tải file Excel mẫu danh sách học sinh"
+                    >
+                      <FileSpreadsheet size={20} />
+                      Tải file mẫu
+                    </button>
                     <label className="flex items-center gap-2 px-4 py-2 border border-slate-200 text-slate-700 bg-white rounded-xl hover:bg-slate-50 transition-colors cursor-pointer font-medium shadow-sm">
                       <Upload size={20} />
                       Nhập từ Excel
@@ -1176,6 +1309,14 @@ export default function App() {
                 <div className="flex justify-between items-center">
                   <h2 className="text-2xl font-bold">Quản lý điểm số</h2>
                   <div className="flex gap-3">
+                    <button
+                      onClick={downloadGradeTemplate}
+                      className="flex items-center gap-2 px-4 py-2 border border-emerald-200 text-emerald-700 bg-emerald-50 rounded-xl hover:bg-emerald-100 transition-colors font-medium shadow-sm"
+                      title="Tải file Excel mẫu nhập điểm"
+                    >
+                      <FileSpreadsheet size={18} />
+                      Tải file mẫu
+                    </button>
                     <label className="flex items-center gap-2 px-4 py-2 bg-slate-900 text-white rounded-xl font-medium hover:bg-slate-800 transition-colors cursor-pointer shadow-lg">
                       <Upload size={18} />
                       Nhập điểm nhanh
@@ -1350,7 +1491,7 @@ export default function App() {
             )}
             {activeTab === 'admission' && (() => {
               const admissionStudent = data.students.find(s => s.id === admissionStudentId) || data.students[0];
-              const examDate = dayjs(new Date().getFullYear() + '-06-05');
+              const examDate = dayjs('2026-06-01');
               const daysLeft = examDate.diff(dayjs(), 'day');
               
               return (
@@ -1363,7 +1504,7 @@ export default function App() {
                 <div className="flex justify-between items-center">
                   <h2 className="text-2xl font-bold flex items-center gap-3"><Target className="text-blue-600" /> Quản lý Tuyển sinh 10</h2>
                   <div className="flex items-center gap-3">
-                    <span className="text-sm text-slate-500 font-medium">Kỳ thi dự kiến: 05/06/{new Date().getFullYear()}</span>
+                    <span className="text-sm text-slate-500 font-medium">Kỳ thi dự kiến: 01/06/2026</span>
                     <div className="px-4 py-2 bg-rose-100 text-rose-700 font-bold rounded-xl flex items-center gap-2 shadow-sm border border-rose-200">
                       <Clock size={18} />
                       Còn {daysLeft > 0 ? daysLeft : 0} ngày
@@ -1390,7 +1531,8 @@ export default function App() {
                 </div>
 
                 {admissionStudent && (
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                  <>
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                     {/* Nguyện vọng */}
                     <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col">
                       <div className="p-6 border-b border-slate-100">
@@ -1562,6 +1704,161 @@ export default function App() {
                       </div>
                     </div>
                   </div>
+                  
+                  {/* Điểm chuẩn 2025 & Gợi ý trường học */}
+                  <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col mt-8">
+                    <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+                      <div>
+                        <h3 className="text-xl font-bold flex items-center gap-2"><Award className="text-purple-600" /> Điểm chuẩn năm 2025 & Gợi ý trường học</h3>
+                        <p className="text-sm text-slate-500 mt-1">Dựa trên điểm trung bình: Toán, Ngữ Văn, Tiếng Anh từ mục Điểm số (Quy chuẩn hệ số 1)</p>
+                      </div>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={downloadAdmissionScoresTemplate}
+                          className="text-sm font-medium text-emerald-600 bg-emerald-50 px-3 py-2 rounded-lg hover:bg-emerald-100 transition-colors flex items-center gap-2"
+                        >
+                          <FileSpreadsheet size={16} /> Mẫu Excel
+                        </button>
+                        <label className="text-sm font-medium text-white bg-slate-800 px-3 py-2 rounded-lg hover:bg-slate-700 transition-colors cursor-pointer flex items-center gap-2">
+                          <Upload size={16} /> Tải điểm chuẩn (Excel)
+                          <input 
+                            type="file" 
+                            accept=".xlsx, .xls" 
+                            className="hidden" 
+                            onChange={importAdmissionScoresFromExcel}
+                          />
+                        </label>
+                      </div>
+                    </div>
+                    
+                    <div className="p-6 flex-1 flex flex-col lg:flex-row gap-8">
+                      {/* Cột tính toán điểm và gợi ý */}
+                      <div className="flex-1 space-y-6">
+                        {(() => {
+                          const mathGrades = data.grades.filter(g => g.studentId === admissionStudent.id && g.subjectId === 'math');
+                          const litGrades = data.grades.filter(g => g.studentId === admissionStudent.id && g.subjectId === 'literature');
+                          const engGrades = data.grades.filter(g => g.studentId === admissionStudent.id && g.subjectId === 'english');
+                          
+                          const avgMath = mathGrades.length > 0 ? mathGrades.reduce((a, b) => a + b.value, 0) / mathGrades.length : 0;
+                          const avgLit = litGrades.length > 0 ? litGrades.reduce((a, b) => a + b.value, 0) / litGrades.length : 0;
+                          const avgEng = engGrades.length > 0 ? engGrades.reduce((a, b) => a + b.value, 0) / engGrades.length : 0;
+                          
+                          const hasScore = mathGrades.length > 0 || litGrades.length > 0 || engGrades.length > 0;
+                          const estimatedScore = avgMath + avgLit + avgEng;
+
+                          return (
+                            <>
+                              <div className="bg-purple-50 rounded-2xl p-6 border border-purple-100">
+                                <h4 className="font-bold text-slate-700 mb-4 flex justify-between items-center">
+                                  <span>Điểm năng lực hiện tại</span>
+                                  <span className="text-xs font-normal text-slate-500">Môn Toán + Văn + Anh</span>
+                                </h4>
+                                {hasScore ? (
+                                  <div className="flex items-center justify-between">
+                                    <div className="flex gap-4">
+                                      <div className="text-center">
+                                        <p className="text-xs text-slate-500 uppercase font-bold">Toán</p>
+                                        <p className="font-bold text-lg">{avgMath.toFixed(1)}</p>
+                                      </div>
+                                      <div className="text-center">
+                                        <p className="text-xs text-slate-500 uppercase font-bold">Văn</p>
+                                        <p className="font-bold text-lg">{avgLit.toFixed(1)}</p>
+                                      </div>
+                                      <div className="text-center">
+                                        <p className="text-xs text-slate-500 uppercase font-bold">Anh</p>
+                                        <p className="font-bold text-lg">{avgEng.toFixed(1)}</p>
+                                      </div>
+                                    </div>
+                                    <div className="text-right">
+                                      <p className="text-sm font-bold text-slate-500">Tổng quy đổi</p>
+                                      <p className="text-3xl font-black text-purple-700">{estimatedScore.toFixed(2)}</p>
+                                    </div>
+                                  </div>
+                                ) : (
+                                  <p className="text-slate-500 text-sm">Học sinh chưa có điểm số nào ở các môn Toán, Ngữ văn, Tiếng Anh.</p>
+                                )}
+                              </div>
+                              
+                              <div className="space-y-4">
+                                <h4 className="font-bold text-slate-700 flexItems-center gap-2">Trường phù hợp với trình độ</h4>
+                                {hasScore && (data.admissionScores2025 || []).length > 0 ? (
+                                  <div className="space-y-3">
+                                    {(data.admissionScores2025 || [])
+                                      .filter(school => school.targetScore <= estimatedScore + 1.5)
+                                      .sort((a, b) => b.targetScore - a.targetScore)
+                                      .slice(0, 5)
+                                      .map(school => {
+                                        const diff = estimatedScore - school.targetScore;
+                                        const safetyClass = diff >= 1.5 ? 'border-green-200 bg-green-50' : diff >= 0 ? 'border-blue-200 bg-blue-50' : 'border-orange-200 bg-orange-50';
+                                        const safetyText = diff >= 1.5 ? 'Rất An toàn' : diff >= 0 ? 'Vừa sức' : 'Hơi với';
+                                        
+                                        return (
+                                          <div key={`${school.name}-${school.targetScore}`} className={cn("p-4 border rounded-xl flex justify-between items-center", safetyClass)}>
+                                            <div>
+                                              <p className="font-bold text-slate-800">{school.name}</p>
+                                              <p className="text-xs font-medium text-slate-600 mt-1">Trạng thái: {safetyText}</p>
+                                            </div>
+                                            <div className="text-right">
+                                              <p className="font-bold text-lg text-slate-800">{school.targetScore}</p>
+                                            </div>
+                                          </div>
+                                        );
+                                      })
+                                    }
+                                  </div>
+                                ) : (
+                                  <div className="p-4 bg-slate-50 rounded-xl text-sm text-slate-500 border border-slate-100 italic">
+                                    {!hasScore ? 'Cần cập nhật điểm số để có gợi ý.' : 'Chưa có dữ liệu điểm chuẩn. Vui lòng tải lên file Excel điểm chuẩn 2025.'}
+                                  </div>
+                                )}
+                              </div>
+                            </>
+                          );
+                        })()}
+                      </div>
+                      
+                      {/* Cột hiển thị toàn danh sách đã tải */}
+                      <div className="flex-1 border-tl lg:border-t-0 lg:border-l border-slate-200 pt-6 lg:pt-0 lg:pl-8">
+                         <h4 className="font-bold text-slate-700 mb-4 flex justify-between items-center">
+                            <span>Bảng Điểm Chuẩn 2025</span>
+                            <span className="text-xs bg-slate-100 text-slate-600 px-2 py-1 rounded-md">
+                              {(data.admissionScores2025 || []).length} trường
+                            </span>
+                         </h4>
+                         
+                         {(data.admissionScores2025 || []).length > 0 ? (
+                           <div className="max-h-[350px] overflow-y-auto border border-slate-200 rounded-xl">
+                              <table className="w-full text-left text-sm border-collapse">
+                                <thead className="bg-slate-50 sticky top-0 border-b border-slate-200">
+                                  <tr>
+                                    <th className="p-3 font-bold text-slate-600">Trường THPT</th>
+                                    <th className="p-3 font-bold text-slate-600 font-mono text-right">Điểm</th>
+                                  </tr>
+                                </thead>
+                                <tbody className="divide-y divide-slate-100">
+                                  {(data.admissionScores2025 || [])
+                                    .slice()
+                                    .sort((a, b) => b.targetScore - a.targetScore)
+                                    .map((s, idx) => (
+                                    <tr key={idx} className="hover:bg-slate-50">
+                                      <td className="p-3 font-medium text-slate-700">{s.name}</td>
+                                      <td className="p-3 font-bold text-slate-900 text-right">{s.targetScore}</td>
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
+                           </div>
+                         ) : (
+                           <div className="h-full min-h-[300px] flex flex-col items-center justify-center text-center text-slate-400 border-2 border-dashed border-slate-200 rounded-xl p-8">
+                             <FileSpreadsheet size={48} className="mb-4 text-slate-300" />
+                             <p>Hệ thống chưa có bảng điểm chuẩn quy chiếu.</p>
+                             <p className="text-sm mt-2">Dữ liệu sẽ hiển thị tại đây sau khi bạn tải file Excel lên.</p>
+                           </div>
+                         )}
+                      </div>
+                    </div>
+                    </div>
+                  </>
                 )}
               </motion.div>
               );
