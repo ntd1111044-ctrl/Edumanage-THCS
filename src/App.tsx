@@ -32,7 +32,10 @@ import {
   FlaskConical,
   MoreVertical,
   Trash2,
-  Save
+  Save,
+  Target,
+  Clock,
+  Calendar
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
@@ -85,7 +88,7 @@ export default function App() {
     return saved ? JSON.parse(saved) : INITIAL_DATA;
   });
   
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'students' | 'grades' | 'behavior' | 'stats' | 'ai' | 'settings'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'students' | 'grades' | 'behavior' | 'stats' | 'ai' | 'settings' | 'admission'>('dashboard');
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedClass, setSelectedClass] = useState('All');
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
@@ -93,6 +96,7 @@ export default function App() {
   const [aiResponse, setAiResponse] = useState('');
   const [showApiModal, setShowApiModal] = useState(false);
   const [targetStudentId, setTargetStudentId] = useState<string>('');
+  const [admissionStudentId, setAdmissionStudentId] = useState<string>('');
 
   // Show modal if no API key is provided
   useEffect(() => {
@@ -540,6 +544,7 @@ export default function App() {
           <SidebarItem id="students" icon={Users} label="Học sinh" />
           <SidebarItem id="grades" icon={GraduationCap} label="Điểm số" />
           <SidebarItem id="behavior" icon={ShieldCheck} label="Nề nếp" />
+          <SidebarItem id="admission" icon={Target} label="Tuyển sinh 10" />
           <SidebarItem id="stats" icon={BarChart3} label="Thống kê" />
           <SidebarItem id="ai" icon={MessageSquare} label="AI Tutor" />
         </nav>
@@ -1321,6 +1326,224 @@ export default function App() {
                 </div>
               </motion.div>
             )}
+            {activeTab === 'admission' && (() => {
+              const admissionStudent = data.students.find(s => s.id === admissionStudentId) || data.students[0];
+              const examDate = dayjs(new Date().getFullYear() + '-06-05');
+              const daysLeft = examDate.diff(dayjs(), 'day');
+              
+              return (
+              <motion.div 
+                key="admission"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                className="space-y-8"
+              >
+                <div className="flex justify-between items-center">
+                  <h2 className="text-2xl font-bold flex items-center gap-3"><Target className="text-blue-600" /> Quản lý Tuyển sinh 10</h2>
+                  <div className="flex items-center gap-3">
+                    <span className="text-sm text-slate-500 font-medium">Kỳ thi dự kiến: 05/06/{new Date().getFullYear()}</span>
+                    <div className="px-4 py-2 bg-rose-100 text-rose-700 font-bold rounded-xl flex items-center gap-2 shadow-sm border border-rose-200">
+                      <Clock size={18} />
+                      Còn {daysLeft > 0 ? daysLeft : 0} ngày
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex items-center gap-4">
+                  <div className="w-12 h-12 bg-blue-50 text-blue-600 rounded-full flex items-center justify-center shrink-0">
+                    <Users size={24} />
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="font-bold text-slate-700 mb-1">Chọn học sinh để theo dõi</h3>
+                    <select 
+                      className="w-full max-w-sm bg-slate-50 border border-slate-200 rounded-lg px-4 py-2 outline-none focus:bg-white focus:border-blue-500 transition-colors"
+                      value={admissionStudent?.id || ''}
+                      onChange={(e) => setAdmissionStudentId(e.target.value)}
+                    >
+                      {data.students.map(s => (
+                        <option key={s.id} value={s.id}>{s.name} - {s.class}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                {admissionStudent && (
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                    {/* Nguyện vọng */}
+                    <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col">
+                      <div className="p-6 border-b border-slate-100">
+                        <h3 className="text-lg font-bold flex items-center gap-2"><Target className="text-orange-500" /> Nguyện vọng xét tuyển</h3>
+                      </div>
+                      <div className="p-6 flex-1 space-y-4">
+                        {admissionStudent.targetSchools?.map((school: any, idx: number) => (
+                          <div key={school.id} className="p-4 bg-orange-50 rounded-xl border border-orange-100 flex justify-between items-center">
+                            <div>
+                              <p className="text-xs text-orange-600 font-bold uppercase tracking-wider mb-1">Nguyện vọng {idx + 1}</p>
+                              <h4 className="font-bold text-slate-800 text-lg">{school.name}</h4>
+                            </div>
+                            <div className="text-right">
+                              <p className="text-xs text-slate-500 mb-1">Điểm chuẩn dự kiến</p>
+                              <p className="font-bold text-2xl text-orange-600">{school.targetScore}</p>
+                            </div>
+                          </div>
+                        ))}
+                        {(!admissionStudent.targetSchools || admissionStudent.targetSchools.length === 0) && (
+                          <div className="p-8 text-center text-slate-400">
+                            Chưa có nguyện vọng nào được đăng ký.
+                          </div>
+                        )}
+                        <button 
+                          onClick={() => {
+                            Swal.fire({
+                              title: 'Thêm Nguyện Vọng',
+                              html: `
+                                <input id="swal-ts-name" class="swal2-input" placeholder="Tên trường THPT (VD: Nguyễn Thượng Hiền)">
+                                <input id="swal-ts-score" type="number" step="0.25" class="swal2-input" placeholder="Điểm chuẩn dự kiến">
+                              `,
+                              focusConfirm: false,
+                              showCancelButton: true,
+                              confirmButtonText: 'Lưu',
+                              preConfirm: () => {
+                                const name = (document.getElementById('swal-ts-name') as HTMLInputElement).value;
+                                const score = parseFloat((document.getElementById('swal-ts-score') as HTMLInputElement).value);
+                                if (!name || isNaN(score)) {
+                                  Swal.showValidationMessage('Vui lòng nhập đầy đủ thông tin hợp lệ');
+                                }
+                                return { name, targetScore: score };
+                              }
+                            }).then((result) => {
+                              if (result.isConfirmed) {
+                                const newSchool = { id: Math.random().toString(), ...result.value };
+                                setData((prev: any) => ({
+                                  ...prev,
+                                  students: prev.students.map((s: any) => s.id === admissionStudent.id ? {
+                                    ...s,
+                                    targetSchools: [...(s.targetSchools || []), newSchool]
+                                  } : s)
+                                }));
+                              }
+                            });
+                          }}
+                          className="w-full p-3 border-2 border-dashed border-slate-200 text-slate-500 font-bold rounded-xl hover:bg-slate-50 hover:border-slate-300 transition-colors flex items-center justify-center gap-2 mt-auto"
+                        >
+                          <Plus size={18} /> Thêm trường nguyện vọng
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Điểm thi thử */}
+                    <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col">
+                      <div className="p-6 border-b border-slate-100 flex justify-between items-center">
+                        <h3 className="text-lg font-bold flex items-center gap-2"><BookOpen className="text-blue-500" /> Kết quả thi thử</h3>
+                        <button 
+                          onClick={() => {
+                            Swal.fire({
+                              title: 'Nhập điểm thi thử',
+                              html: `
+                                <input id="swal-mock-date" type="text" class="swal2-input" placeholder="Tên/Ngày thi (VD: Lần 1 - 15/04)">
+                                <input id="swal-mock-math" type="number" step="0.25" class="swal2-input" placeholder="Điểm Toán">
+                                <input id="swal-mock-lit" type="number" step="0.25" class="swal2-input" placeholder="Điểm Ngữ Văn">
+                                <input id="swal-mock-eng" type="number" step="0.25" class="swal2-input" placeholder="Điểm Tiếng Anh">
+                                <input id="swal-mock-prio" type="number" step="0.25" class="swal2-input" placeholder="Điểm Ưu Tiên (Nếu có)">
+                              `,
+                              focusConfirm: false,
+                              showCancelButton: true,
+                              confirmButtonText: 'Lưu',
+                              preConfirm: () => {
+                                const date = (document.getElementById('swal-mock-date') as HTMLInputElement).value;
+                                const math = parseFloat((document.getElementById('swal-mock-math') as HTMLInputElement).value);
+                                const lit = parseFloat((document.getElementById('swal-mock-lit') as HTMLInputElement).value);
+                                const eng = parseFloat((document.getElementById('swal-mock-eng') as HTMLInputElement).value);
+                                const prio = parseFloat((document.getElementById('swal-mock-prio') as HTMLInputElement).value) || 0;
+                                if (!date || isNaN(math) || isNaN(lit) || isNaN(eng)) {
+                                  Swal.showValidationMessage('Vui lòng nhập đủ tên kì thi và điểm 3 môn');
+                                }
+                                return { date, math, literature: lit, english: eng, priority: prio };
+                              }
+                            }).then((result) => {
+                              if (result.isConfirmed) {
+                                const newMock = { id: Math.random().toString(), ...result.value };
+                                setData((prev: any) => ({
+                                  ...prev,
+                                  students: prev.students.map((s: any) => s.id === admissionStudent.id ? {
+                                    ...s,
+                                    mockExams: [...(s.mockExams || []), newMock]
+                                  } : s)
+                                }));
+                              }
+                            });
+                          }}
+                          className="text-sm font-bold text-blue-600 bg-blue-50 px-3 py-1.5 rounded-lg hover:bg-blue-100 transition-colors"
+                        >+ Thêm điểm mới</button>
+                      </div>
+                      <div className="p-6 flex-1 overflow-y-auto max-h-[500px] space-y-4">
+                        {admissionStudent.mockExams?.map((exam: any) => {
+                          const totalBaseScore = (exam.math + exam.literature) * 2 + exam.english + (exam.priority || 0);
+                          let statusColor = "bg-slate-100 text-slate-800";
+                          let statusText = "Chưa xác định";
+                          
+                          if (admissionStudent.targetSchools && admissionStudent.targetSchools.length > 0) {
+                            const target = admissionStudent.targetSchools[0].targetScore;
+                            const diff = totalBaseScore - target;
+                            if (diff >= 1) {
+                              statusColor = "bg-green-100 text-green-700 border-green-200";
+                              statusText = "Phạm vi An Toàn";
+                            } else if (diff >= -1) {
+                              statusColor = "bg-yellow-100 text-yellow-700 border-yellow-200";
+                              statusText = "Cần cố gắng";
+                            } else {
+                              statusColor = "bg-red-100 text-red-700 border-red-200";
+                              statusText = "Rủi ro cao";
+                            }
+                          }
+
+                          return (
+                            <div key={exam.id} className="p-5 border border-slate-200 rounded-xl hover:shadow-md transition-shadow">
+                              <div className="flex justify-between items-start mb-4">
+                                <div className="font-bold text-slate-800 flex items-center gap-2">
+                                  <Calendar size={16} className="text-blue-500"/> {exam.date}
+                                </div>
+                                <div className={cn("px-3 py-1 rounded-full text-xs font-bold border", statusColor)}>
+                                  {statusText}
+                                </div>
+                              </div>
+                              <div className="grid grid-cols-4 gap-2 mb-4">
+                                <div className="bg-slate-50 p-2 rounded-lg text-center">
+                                  <p className="text-[10px] text-slate-500 font-bold uppercase">Toán (x2)</p>
+                                  <p className="font-bold text-slate-800">{exam.math}</p>
+                                </div>
+                                <div className="bg-slate-50 p-2 rounded-lg text-center">
+                                  <p className="text-[10px] text-slate-500 font-bold uppercase">Ngữ Văn (x2)</p>
+                                  <p className="font-bold text-slate-800">{exam.literature}</p>
+                                </div>
+                                <div className="bg-slate-50 p-2 rounded-lg text-center">
+                                  <p className="text-[10px] text-slate-500 font-bold uppercase">Anh (x1)</p>
+                                  <p className="font-bold text-slate-800">{exam.english}</p>
+                                </div>
+                                <div className="bg-slate-50 p-2 rounded-lg text-center">
+                                  <p className="text-[10px] text-slate-500 font-bold uppercase">Ưu tiên</p>
+                                  <p className="font-bold text-slate-800">+{exam.priority || 0}</p>
+                                </div>
+                              </div>
+                              <div className="pt-3 border-t border-slate-100 flex justify-between items-center">
+                                <span className="text-sm text-slate-500 font-medium">Tổng điểm xét tuyển:</span>
+                                <span className="text-2xl font-black text-blue-600">{totalBaseScore.toFixed(2)}</span>
+                              </div>
+                            </div>
+                          );
+                        })}
+                        {(!admissionStudent.mockExams || admissionStudent.mockExams.length === 0) && (
+                          <div className="p-8 text-center text-slate-400">
+                            Chưa có điểm thi thử nào được ghi nhận.
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </motion.div>
+              );
+            })()}
           </AnimatePresence>
         </div>
       </main>
