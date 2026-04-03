@@ -35,7 +35,12 @@ import {
   Save,
   Target,
   Clock,
-  Calendar
+  Calendar,
+  Wallet,
+  CalendarCheck,
+  CheckSquare,
+  Presentation,
+  Printer
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
@@ -63,6 +68,11 @@ import { Document, Packer, Paragraph, TextRun, HeadingLevel, AlignmentType } fro
 import { cn } from './lib/utils';
 import { Student, Subject, Grade, BehaviorRecord, AppData, INITIAL_DATA } from './types';
 import { callGeminiAI, MODELS } from './lib/gemini';
+import AttendanceTab from './components/AttendanceTab';
+import FundsTab from './components/FundsTab';
+import TasksTab from './components/TasksTab';
+import SeatingTab from './components/SeatingTab';
+import ParentReportModal from './components/ParentReportModal';
 
 // Register ChartJS
 ChartJS.register(
@@ -88,7 +98,7 @@ export default function App() {
     return saved ? JSON.parse(saved) : INITIAL_DATA;
   });
   
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'students' | 'grades' | 'behavior' | 'stats' | 'ai' | 'settings' | 'admission'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'students' | 'grades' | 'behavior' | 'stats' | 'ai' | 'settings' | 'admission' | 'funds' | 'attendance' | 'tasks' | 'seating'>('dashboard');
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedClass, setSelectedClass] = useState('All');
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
@@ -97,6 +107,7 @@ export default function App() {
   const [showApiModal, setShowApiModal] = useState(false);
   const [targetStudentId, setTargetStudentId] = useState<string>('');
   const [admissionStudentId, setAdmissionStudentId] = useState<string>('');
+  const [reportStudent, setReportStudent] = useState<Student | null>(null);
 
   // Show modal if no API key is provided
   useEffect(() => {
@@ -545,6 +556,10 @@ export default function App() {
           <SidebarItem id="grades" icon={GraduationCap} label="Điểm số" />
           <SidebarItem id="behavior" icon={ShieldCheck} label="Nề nếp" />
           <SidebarItem id="admission" icon={Target} label="Tuyển sinh 10" />
+          <SidebarItem id="attendance" icon={CalendarCheck} label="Điểm danh" />
+          <SidebarItem id="tasks" icon={CheckSquare} label="Bài tập" />
+          <SidebarItem id="funds" icon={Wallet} label="Quỹ lớp" />
+          <SidebarItem id="seating" icon={Presentation} label="Sơ đồ lớp" />
           <SidebarItem id="stats" icon={BarChart3} label="Thống kê" />
           <SidebarItem id="ai" icon={MessageSquare} label="AI Tutor" />
         </nav>
@@ -803,6 +818,13 @@ export default function App() {
                           >
                             <MessageSquare size={16} />
                             AI Report
+                          </button>
+                          <button 
+                            onClick={() => setReportStudent(student)}
+                            className="p-2 border border-slate-200 text-slate-600 rounded-lg hover:bg-slate-50 transition-colors"
+                            title="Tạo Phiếu Điểm"
+                          >
+                            <Printer size={20} />
                           </button>
                           <button 
                             onClick={() => {
@@ -1544,9 +1566,17 @@ export default function App() {
               </motion.div>
               );
             })()}
+
+            {activeTab === 'attendance' && <AttendanceTab data={data} setData={setData} />}
+            {activeTab === 'funds' && <FundsTab data={data} setData={setData} />}
+            {activeTab === 'tasks' && <TasksTab data={data} setData={setData} />}
+            {activeTab === 'seating' && <SeatingTab data={data} setData={setData} />}
+
           </AnimatePresence>
         </div>
       </main>
+
+      <ParentReportModal student={reportStudent} data={data} onClose={() => setReportStudent(null)} />
 
       {/* API Key Modal */}
       <AnimatePresence>
