@@ -1,8 +1,26 @@
+export interface TargetHighSchool {
+  id: string;
+  name: string;
+  targetScore: number;
+}
+
+export interface MockExam {
+  id: string;
+  date: string;
+  math: number;
+  literature: number;
+  english: number;
+  special?: number; // Điểm chuyên (nếu có)
+  priority?: number; // Điểm ưu tiên (nếu có)
+}
+
 export interface Student {
   id: string;
   name: string;
   class: string;
   avatar?: string;
+  targetSchools?: TargetHighSchool[];
+  mockExams?: MockExam[];
 }
 
 export interface BehaviorRecord {
