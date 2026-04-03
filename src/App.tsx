@@ -4,17 +4,17 @@
  */
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { 
-  LayoutDashboard, 
-  Users, 
-  GraduationCap, 
-  ShieldCheck, 
-  BarChart3, 
-  Settings, 
-  Plus, 
-  Search, 
-  TrendingUp, 
-  Award, 
+import {
+  LayoutDashboard,
+  Users,
+  GraduationCap,
+  ShieldCheck,
+  BarChart3,
+  Settings,
+  Plus,
+  Search,
+  TrendingUp,
+  Award,
   AlertCircle,
   CheckCircle2,
   XCircle,
@@ -44,20 +44,21 @@ import {
   Printer
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { 
-  Chart as ChartJS, 
-  CategoryScale, 
-  LinearScale, 
-  PointElement, 
-  LineElement, 
+import {
+  Chart as ChartJS,
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
   BarElement,
-  Title, 
-  Tooltip, 
-  Legend, 
+  Title,
+  Tooltip,
+  Legend,
   ArcElement,
   Filler
 } from 'chart.js';
 import { Line, Bar, Doughnut } from 'react-chartjs-2';
+import * as XLSX from 'xlsx';
 import dayjs from 'dayjs';
 import 'dayjs/locale/vi';
 import relativeTime from 'dayjs/plugin/relativeTime';
@@ -77,14 +78,14 @@ import ParentReportModal from './components/ParentReportModal';
 
 // Register ChartJS
 ChartJS.register(
-  CategoryScale, 
-  LinearScale, 
-  PointElement, 
-  LineElement, 
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
   BarElement,
   ArcElement,
-  Title, 
-  Tooltip, 
+  Title,
+  Tooltip,
   Legend,
   Filler
 );
@@ -113,7 +114,7 @@ export default function App() {
     }
     return INITIAL_DATA;
   });
-  
+
   const [activeTab, setActiveTab] = useState<'dashboard' | 'students' | 'grades' | 'behavior' | 'stats' | 'ai' | 'settings' | 'admission' | 'funds' | 'attendance' | 'tasks' | 'seating'>('dashboard');
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedClass, setSelectedClass] = useState('All');
@@ -159,7 +160,7 @@ export default function App() {
       date: new Date().toISOString(),
       subjectId: 'general'
     };
-    
+
     setData(prev => ({
       ...prev,
       behaviors: [newRecord, ...prev.behaviors]
@@ -207,7 +208,7 @@ export default function App() {
 
     const studentGrades = data.grades.filter(g => g.studentId === studentId);
     const studentBehaviors = data.behaviors.filter(b => b.studentId === studentId);
-    
+
     const prompt = `
       Hãy đóng vai một giáo viên chủ nhiệm THCS tại Việt Nam. 
       Viết một bản nhận xét chi tiết và lời khuyên cho học sinh sau:
@@ -243,11 +244,11 @@ export default function App() {
   const exportToExcel = () => {
     const ws = XLSX.utils.json_to_sheet(data.students.map(s => {
       const studentGrades = data.grades.filter(g => g.studentId === s.id);
-      const avgGrade = studentGrades.length > 0 
+      const avgGrade = studentGrades.length > 0
         ? (studentGrades.reduce((acc, curr) => acc + curr.value, 0) / studentGrades.length).toFixed(2)
         : 'N/A';
       const behaviorPoints = data.behaviors.filter(b => b.studentId === s.id).reduce((acc, curr) => acc + curr.points, 0);
-      
+
       return {
         'Họ tên': s.name,
         'Lớp': s.class,
@@ -276,17 +277,17 @@ export default function App() {
 
   const downloadGradeTemplate = () => {
     const subjectNames = data.subjects.map(s => s.name);
-    const sampleStudents = data.students.length > 0 
+    const sampleStudents = data.students.length > 0
       ? data.students.slice(0, 3).map((s, i) => {
-          const row: Record<string, any> = { 'STT': i + 1, 'Họ tên': s.name };
-          subjectNames.forEach(name => { row[name] = ''; });
-          return row;
-        })
+        const row: Record<string, any> = { 'STT': i + 1, 'Họ tên': s.name };
+        subjectNames.forEach(name => { row[name] = ''; });
+        return row;
+      })
       : [
-          (() => { const r: Record<string, any> = { 'STT': 1, 'Họ tên': 'Nguyễn Văn A' }; subjectNames.forEach(n => { r[n] = 8.5; }); return r; })(),
-          (() => { const r: Record<string, any> = { 'STT': 2, 'Họ tên': 'Trần Thị B' }; subjectNames.forEach(n => { r[n] = 7.0; }); return r; })(),
-          (() => { const r: Record<string, any> = { 'STT': 3, 'Họ tên': 'Lê Văn C' }; subjectNames.forEach(n => { r[n] = 9.0; }); return r; })(),
-        ];
+        (() => { const r: Record<string, any> = { 'STT': 1, 'Họ tên': 'Nguyễn Văn A' }; subjectNames.forEach(n => { r[n] = 8.5; }); return r; })(),
+        (() => { const r: Record<string, any> = { 'STT': 2, 'Họ tên': 'Trần Thị B' }; subjectNames.forEach(n => { r[n] = 7.0; }); return r; })(),
+        (() => { const r: Record<string, any> = { 'STT': 3, 'Họ tên': 'Lê Văn C' }; subjectNames.forEach(n => { r[n] = 9.0; }); return r; })(),
+      ];
     const ws = XLSX.utils.json_to_sheet(sampleStudents);
     ws['!cols'] = [{ wch: 5 }, { wch: 25 }, ...subjectNames.map(() => ({ wch: 12 }))];
     const wb = XLSX.utils.book_new();
@@ -305,15 +306,21 @@ export default function App() {
           default: { document: { run: { font: "Arial", size: 24 } } },
           paragraphStyles: [
             { id: "Normal", name: "Normal", run: { font: "Arial", size: 24 } },
-            { id: "Heading1", name: "Heading 1", basedOn: "Normal", next: "Normal",
+            {
+              id: "Heading1", name: "Heading 1", basedOn: "Normal", next: "Normal",
               run: { size: 32, bold: true, color: "000000" },
-              paragraph: { spacing: { before: 240, after: 120 } } },
-            { id: "Heading2", name: "Heading 2", basedOn: "Normal", next: "Normal",
+              paragraph: { spacing: { before: 240, after: 120 } }
+            },
+            {
+              id: "Heading2", name: "Heading 2", basedOn: "Normal", next: "Normal",
               run: { size: 28, bold: true, color: "000000" },
-              paragraph: { spacing: { before: 240, after: 120 } } },
-            { id: "Heading3", name: "Heading 3", basedOn: "Normal", next: "Normal",
+              paragraph: { spacing: { before: 240, after: 120 } }
+            },
+            {
+              id: "Heading3", name: "Heading 3", basedOn: "Normal", next: "Normal",
               run: { size: 24, bold: true, color: "000000" },
-              paragraph: { spacing: { before: 240, after: 120 } } },
+              paragraph: { spacing: { before: 240, after: 120 } }
+            },
           ]
         },
         sections: [{
@@ -345,7 +352,7 @@ export default function App() {
       a.download = `Phieu_Nhan_Xet_${dayjs().format('YYYYMMDD')}.docx`;
       a.click();
       URL.revokeObjectURL(url);
-      
+
       Swal.fire('Thành công', 'Đầy xuất file Word thành công!', 'success');
     } catch (e: any) {
       console.error(e);
@@ -365,7 +372,7 @@ export default function App() {
         const wsname = wb.SheetNames[0];
         const ws = wb.Sheets[wsname];
         const rows = XLSX.utils.sheet_to_json(ws, { header: 1 }) as any[][];
-        
+
         let nameIdx = 0;
         let classIdx = 1;
         let startIndex = 0;
@@ -374,7 +381,7 @@ export default function App() {
           const headerRow = rows[0].map(c => String(c).toLowerCase().trim());
           const foundNameIdx = headerRow.findIndex(c => c.includes('tên') || c.includes('name') || c.includes('họ'));
           const foundClassIdx = headerRow.findIndex(c => c.includes('lớp') || c.includes('class'));
-          
+
           if (foundNameIdx !== -1) {
             nameIdx = foundNameIdx;
             startIndex = 1;
@@ -389,12 +396,12 @@ export default function App() {
             classIdx = foundClassIdx;
           }
         }
-        
+
         const newStudents: Student[] = [];
         for (let i = startIndex; i < rows.length; i++) {
           const row = rows[i];
           if (!row || !row[nameIdx]) continue; // Skip empty rows or rows without name
-          
+
           newStudents.push({
             id: Math.random().toString(36).substr(2, 9),
             name: String(row[nameIdx]),
@@ -432,9 +439,9 @@ export default function App() {
         const wsname = wb.SheetNames[0];
         const ws = wb.Sheets[wsname];
         const rows = XLSX.utils.sheet_to_json(ws, { header: 1 }) as any[][];
-        
+
         if (rows.length < 2) throw new Error('File không có dữ liệu hợp lệ');
-        
+
         const headerRow = rows[0].map(c => String(c).toLowerCase().trim());
         const nameIdx = headerRow.findIndex(c => c.includes('tên') || c.includes('họ'));
         const finalNameIdx = nameIdx === -1 ? 1 : nameIdx; // fallback to 1
@@ -459,10 +466,10 @@ export default function App() {
         for (let i = 1; i < rows.length; i++) {
           const row = rows[i];
           if (!row || !row[finalNameIdx]) continue;
-          
+
           const studentName = String(row[finalNameIdx]).trim().toLowerCase();
           const student = data.students.find(s => s.name.toLowerCase() === studentName);
-          
+
           if (student) {
             let addedForStudent = false;
             subjectCols.forEach(({ colIdx, subjectId }) => {
@@ -531,13 +538,13 @@ export default function App() {
         const wsname = wb.SheetNames[0];
         const ws = wb.Sheets[wsname];
         const rows = XLSX.utils.sheet_to_json(ws, { header: 1 }) as any[][];
-        
+
         if (rows.length < 2) throw new Error('File không có dữ liệu hợp lệ');
-        
+
         const headerRow = rows[0].map(c => String(c).toLowerCase().trim());
         const nameIdx = headerRow.findIndex(c => c.includes('tên') || c.includes('trường') || c.includes('school'));
         const scoreIdx = headerRow.findIndex(c => c.includes('điểm') || c.includes('chuẩn') || c.includes('score'));
-        
+
         if (nameIdx === -1 || scoreIdx === -1) {
           Swal.fire('Chú ý', 'Không tìm thấy cột "Tên trường" hoặc "Điểm chuẩn" hợp lệ trong file.', 'warning');
           return;
@@ -547,10 +554,10 @@ export default function App() {
         for (let i = 1; i < rows.length; i++) {
           const row = rows[i];
           if (!row || !row[nameIdx] || row[scoreIdx] === undefined) continue;
-          
+
           const name = String(row[nameIdx]).trim();
           let score = parseFloat(String(row[scoreIdx]).replace(',', '.'));
-          
+
           if (name && !isNaN(score)) {
             newScores.push({
               id: Math.random().toString(36).substr(2, 9),
@@ -630,7 +637,7 @@ export default function App() {
 
     // A very rudimentary parser for **bold**
     const parts = text.split(/(\*\*.*?\*\*|\*[^*]+\*)/g);
-    
+
     parts.forEach(part => {
       if (part.startsWith('**') && part.endsWith('**')) {
         runs.push(new TextRun({ text: part.substring(2, part.length - 2), bold: true }));
@@ -640,7 +647,7 @@ export default function App() {
         runs.push(new TextRun({ text: part }));
       }
     });
-    
+
     return runs.length > 0 ? runs : [new TextRun(text)];
   };
 
@@ -651,8 +658,8 @@ export default function App() {
       onClick={() => setActiveTab(id)}
       className={cn(
         "flex items-center gap-3 w-full px-4 py-3 rounded-xl transition-all duration-200",
-        activeTab === id 
-          ? "bg-blue-600 text-white shadow-lg shadow-blue-200" 
+        activeTab === id
+          ? "bg-blue-600 text-white shadow-lg shadow-blue-200"
           : "text-slate-600 hover:bg-slate-100"
       )}
     >
@@ -691,7 +698,7 @@ export default function App() {
 
         <div className="p-3 border-t border-slate-100">
           <SidebarItem id="settings" icon={Settings} label="Cài đặt" />
-          <button 
+          <button
             onClick={() => setIsSidebarOpen(!isSidebarOpen)}
             className="mt-2 flex items-center justify-center w-full p-2 text-slate-400 hover:text-slate-600 transition-colors"
           >
@@ -707,15 +714,15 @@ export default function App() {
           <div className="flex items-center gap-4 flex-1 max-w-xl">
             <div className="relative w-full">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-              <input 
-                type="text" 
-                placeholder="Tìm kiếm học sinh..." 
+              <input
+                type="text"
+                placeholder="Tìm kiếm học sinh..."
                 className="w-full pl-10 pr-4 py-2 bg-slate-100 border-transparent focus:bg-white focus:border-blue-500 rounded-lg outline-none transition-all"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
             </div>
-            <select 
+            <select
               className="bg-slate-100 border-transparent rounded-lg px-3 py-2 outline-none focus:bg-white focus:border-blue-500"
               value={selectedClass}
               onChange={(e) => setSelectedClass(e.target.value)}
@@ -725,7 +732,7 @@ export default function App() {
           </div>
 
           <div className="flex items-center gap-3">
-            <button 
+            <button
               onClick={() => {
                 setShowApiModal(true);
                 setActiveTab('settings');
@@ -751,7 +758,7 @@ export default function App() {
         <div className="flex-1 overflow-y-auto p-8">
           <AnimatePresence mode="wait">
             {activeTab === 'dashboard' && (
-              <motion.div 
+              <motion.div
                 key="dashboard"
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -759,32 +766,32 @@ export default function App() {
                 className="space-y-8"
               >
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                  <StatCard 
-                    title="Tổng học sinh" 
-                    value={data.students.length} 
-                    icon={Users} 
-                    color="blue" 
+                  <StatCard
+                    title="Tổng học sinh"
+                    value={data.students.length}
+                    icon={Users}
+                    color="blue"
                     trend="+2 tháng này"
                   />
-                  <StatCard 
-                    title="Điểm TB khối" 
-                    value={(data.grades.reduce((a, b) => a + b.value, 0) / (data.grades.length || 1)).toFixed(1)} 
-                    icon={TrendingUp} 
-                    color="green" 
+                  <StatCard
+                    title="Điểm TB khối"
+                    value={(data.grades.reduce((a, b) => a + b.value, 0) / (data.grades.length || 1)).toFixed(1)}
+                    icon={TrendingUp}
+                    color="green"
                     trend="+0.2 so với kỳ trước"
                   />
-                  <StatCard 
-                    title="Vi phạm nề nếp" 
-                    value={data.behaviors.filter(b => b.type === 'negative').length} 
-                    icon={AlertCircle} 
-                    color="orange" 
+                  <StatCard
+                    title="Vi phạm nề nếp"
+                    value={data.behaviors.filter(b => b.type === 'negative').length}
+                    icon={AlertCircle}
+                    color="orange"
                     trend="-15% so với tuần trước"
                   />
-                  <StatCard 
-                    title="Khen thưởng AI" 
-                    value={data.behaviors.filter(b => b.type === 'positive').length} 
-                    icon={Award} 
-                    color="purple" 
+                  <StatCard
+                    title="Khen thưởng AI"
+                    value={data.behaviors.filter(b => b.type === 'positive').length}
+                    icon={Award}
+                    color="purple"
                     trend="12 học sinh mới"
                   />
                 </div>
@@ -793,7 +800,7 @@ export default function App() {
                   <div className="lg:col-span-2 bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
                     <h3 className="text-lg font-bold mb-6">Xu hướng học tập</h3>
                     <div className="h-80">
-                      <Line 
+                      <Line
                         data={{
                           labels: ['Tuần 1', 'Tuần 2', 'Tuần 3', 'Tuần 4', 'Tuần 5', 'Tuần 6'],
                           datasets: [{
@@ -812,7 +819,7 @@ export default function App() {
                   <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
                     <h3 className="text-lg font-bold mb-6">Phân bổ hạnh kiểm</h3>
                     <div className="h-80 flex items-center justify-center">
-                      <Doughnut 
+                      <Doughnut
                         data={{
                           labels: ['Tốt', 'Khá', 'Trung bình', 'Yếu'],
                           datasets: [{
@@ -864,7 +871,7 @@ export default function App() {
             )}
 
             {activeTab === 'students' && (
-              <motion.div 
+              <motion.div
                 key="students"
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
@@ -884,10 +891,10 @@ export default function App() {
                     <label className="flex items-center gap-2 px-4 py-2 border border-slate-200 text-slate-700 bg-white rounded-xl hover:bg-slate-50 transition-colors cursor-pointer font-medium shadow-sm">
                       <Upload size={20} />
                       Nhập từ Excel
-                      <input 
-                        type="file" 
-                        accept=".xlsx, .xls" 
-                        className="hidden" 
+                      <input
+                        type="file"
+                        accept=".xlsx, .xls"
+                        className="hidden"
                         onChange={importFromExcel}
                       />
                     </label>
@@ -902,25 +909,25 @@ export default function App() {
                   {filteredStudents.map(student => {
                     const avg = data.grades.filter(g => g.studentId === student.id).reduce((a, b) => a + b.value, 0) / (data.grades.filter(g => g.studentId === student.id).length || 1);
                     const behaviorPoints = data.behaviors.filter(b => b.studentId === student.id).reduce((a, b) => a + b.points, 0);
-                    
+
                     return (
                       <div key={student.id} className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition-all group">
                         <div className="flex items-start justify-between mb-4">
                           <div className="flex items-center gap-4">
                             <label className="relative block w-14 h-14 rounded-2xl bg-slate-100 overflow-hidden shrink-0 border border-slate-200 shadow-sm cursor-pointer group">
-                              <img 
-                                src={student.avatar || `https://api.dicebear.com/7.x/notionists/svg?seed=${encodeURIComponent(student.name)}&backgroundColor=f8fafc`} 
-                                alt={student.name} 
-                                className="w-full h-full object-cover mix-blend-multiply transition-all group-hover:blur-[2px]" 
+                              <img
+                                src={student.avatar || `https://api.dicebear.com/7.x/notionists/svg?seed=${encodeURIComponent(student.name)}&backgroundColor=f8fafc`}
+                                alt={student.name}
+                                className="w-full h-full object-cover mix-blend-multiply transition-all group-hover:blur-[2px]"
                               />
                               <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 bg-black/30 text-white text-[10px] font-bold transition-opacity">
                                 Đổi ảnh
                               </div>
-                              <input 
-                                type="file" 
-                                accept="image/*" 
-                                className="hidden" 
-                                onChange={(e) => handleUpdateAvatar(student.id, e)} 
+                              <input
+                                type="file"
+                                accept="image/*"
+                                className="hidden"
+                                onChange={(e) => handleUpdateAvatar(student.id, e)}
                               />
                             </label>
                             <div>
@@ -945,21 +952,21 @@ export default function App() {
                         </div>
 
                         <div className="flex gap-2">
-                          <button 
+                          <button
                             onClick={() => generateAIReport(student.id)}
                             className="flex-1 py-2 bg-slate-900 text-white rounded-lg text-sm font-medium hover:bg-slate-800 transition-colors flex items-center justify-center gap-2"
                           >
                             <MessageSquare size={16} />
                             AI Report
                           </button>
-                          <button 
+                          <button
                             onClick={() => setReportStudent(student)}
                             className="p-2 border border-slate-200 text-slate-600 rounded-lg hover:bg-slate-50 transition-colors"
                             title="Tạo Phiếu Điểm"
                           >
                             <Printer size={20} />
                           </button>
-                          <button 
+                          <button
                             onClick={() => {
                               setTargetStudentId(student.id);
                               setActiveTab('behavior');
@@ -977,7 +984,7 @@ export default function App() {
             )}
 
             {activeTab === 'behavior' && (
-              <motion.div 
+              <motion.div
                 key="behavior"
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
@@ -993,8 +1000,8 @@ export default function App() {
                     <div className="space-y-6">
                       <div>
                         <label className="block text-sm font-bold text-slate-700 mb-2">Học sinh</label>
-                        <select 
-                          id="behavior-student" 
+                        <select
+                          id="behavior-student"
                           value={targetStudentId}
                           onChange={(e) => setTargetStudentId(e.target.value)}
                           className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500"
@@ -1006,7 +1013,7 @@ export default function App() {
                       <div>
                         <label className="block text-sm font-bold text-slate-700 mb-2">Loại hành vi</label>
                         <div className="grid grid-cols-2 gap-4">
-                          <button 
+                          <button
                             id="type-positive"
                             className="p-4 rounded-2xl border-2 border-green-100 bg-green-50 text-green-700 flex flex-col items-center gap-2 hover:border-green-500 transition-all"
                             onClick={() => {
@@ -1018,7 +1025,7 @@ export default function App() {
                             <CheckCircle2 size={32} />
                             <span className="font-bold">Tích cực</span>
                           </button>
-                          <button 
+                          <button
                             id="type-negative"
                             className="p-4 rounded-2xl border-2 border-red-100 bg-red-50 text-red-700 flex flex-col items-center gap-2 hover:border-red-500 transition-all"
                             onClick={() => {
@@ -1059,7 +1066,7 @@ export default function App() {
                     </div>
                   </div>
 
-                  <button 
+                  <button
                     onClick={() => {
                       const studentId = (document.getElementById('behavior-student') as HTMLSelectElement).value;
                       const type = (document.getElementById('behavior-type') as HTMLInputElement).value as 'positive' | 'negative';
@@ -1077,7 +1084,7 @@ export default function App() {
             )}
 
             {activeTab === 'ai' && (
-              <motion.div 
+              <motion.div
                 key="ai"
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
@@ -1106,7 +1113,7 @@ export default function App() {
                     ) : aiResponse ? (
                       <div className="relative">
                         <div className="flex justify-end mb-4 absolute right-0 -top-4">
-                          <button 
+                          <button
                             onClick={exportAIToWord}
                             className="flex items-center gap-2 px-4 py-2 bg-blue-100 text-blue-700 hover:bg-blue-200 rounded-xl font-medium transition-colors shadow-sm"
                           >
@@ -1130,11 +1137,11 @@ export default function App() {
                       </div>
                     )}
                   </div>
-                  
+
                   <div className="p-4 bg-slate-50 border-t border-slate-100 flex gap-4">
-                    <input 
-                      type="text" 
-                      placeholder="Hỏi AI về tình hình lớp học..." 
+                    <input
+                      type="text"
+                      placeholder="Hỏi AI về tình hình lớp học..."
                       className="flex-1 bg-white border border-slate-200 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-blue-500"
                       onKeyDown={async (e) => {
                         if (e.key === 'Enter' && e.currentTarget.value) {
@@ -1161,14 +1168,14 @@ export default function App() {
             )}
 
             {activeTab === 'settings' && (
-              <motion.div 
+              <motion.div
                 key="settings"
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 className="max-w-2xl mx-auto space-y-8"
               >
                 <h2 className="text-2xl font-bold">Cài đặt hệ thống</h2>
-                
+
                 <div className="bg-white p-8 rounded-3xl border border-slate-200 shadow-sm space-y-8">
                   <section className="space-y-4">
                     <h3 className="text-lg font-bold flex items-center gap-2">
@@ -1179,8 +1186,8 @@ export default function App() {
                       <div>
                         <label className="block text-sm font-medium text-slate-600 mb-1">API Key</label>
                         <div className="relative">
-                          <input 
-                            type="password" 
+                          <input
+                            type="password"
                             value={data.settings.apiKey}
                             onChange={(e) => setData(prev => ({ ...prev, settings: { ...prev.settings, apiKey: e.target.value } }))}
                             placeholder="Nhập API Key của bạn..."
@@ -1194,7 +1201,7 @@ export default function App() {
                         <label className="block text-sm font-medium text-slate-600 mb-2">Model ưu tiên</label>
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                           {MODELS.map(m => (
-                            <div 
+                            <div
                               key={m.id}
                               onClick={() => setData(prev => ({ ...prev, settings: { ...prev.settings, selectedModel: m.id } }))}
                               className={cn(
@@ -1232,7 +1239,7 @@ export default function App() {
                       Dữ liệu & Bảo mật
                     </h3>
                     <div className="grid grid-cols-2 gap-4">
-                      <button 
+                      <button
                         onClick={() => {
                           const blob = new Blob([JSON.stringify(data)], { type: 'application/json' });
                           const url = URL.createObjectURL(blob);
@@ -1249,9 +1256,9 @@ export default function App() {
                       <label className="flex items-center justify-center gap-2 p-4 border border-slate-200 rounded-2xl hover:bg-slate-50 transition-all font-medium cursor-pointer">
                         <Upload size={20} />
                         Import JSON
-                        <input 
-                          type="file" 
-                          className="hidden" 
+                        <input
+                          type="file"
+                          className="hidden"
                           accept=".json"
                           onChange={(e) => {
                             const file = e.target.files?.[0];
@@ -1272,7 +1279,7 @@ export default function App() {
                         />
                       </label>
                     </div>
-                    <button 
+                    <button
                       onClick={() => {
                         Swal.fire({
                           title: 'Xóa toàn bộ dữ liệu?',
@@ -1300,7 +1307,7 @@ export default function App() {
             )}
 
             {activeTab === 'grades' && (
-              <motion.div 
+              <motion.div
                 key="grades"
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
@@ -1320,10 +1327,10 @@ export default function App() {
                     <label className="flex items-center gap-2 px-4 py-2 bg-slate-900 text-white rounded-xl font-medium hover:bg-slate-800 transition-colors cursor-pointer shadow-lg">
                       <Upload size={18} />
                       Nhập điểm nhanh
-                      <input 
-                        type="file" 
-                        accept=".xlsx, .xls" 
-                        className="hidden" 
+                      <input
+                        type="file"
+                        accept=".xlsx, .xls"
+                        className="hidden"
                         onChange={importGradesFromExcel}
                       />
                     </label>
@@ -1353,8 +1360,8 @@ export default function App() {
                             </td>
                             {data.subjects.map(subject => {
                               const studentGrades = data.grades.filter(g => g.studentId === student.id && g.subjectId === subject.id);
-                              const avg = studentGrades.length > 0 
-                                ? studentGrades.reduce((a, b) => a + b.value, 0) / studentGrades.length 
+                              const avg = studentGrades.length > 0
+                                ? studentGrades.reduce((a, b) => a + b.value, 0) / studentGrades.length
                                 : null;
                               if (avg !== null) {
                                 total += avg;
@@ -1362,7 +1369,7 @@ export default function App() {
                               }
                               return (
                                 <td key={subject.id} className="p-4 text-center">
-                                  <button 
+                                  <button
                                     onClick={() => {
                                       Swal.fire({
                                         title: `Nhập điểm ${subject.name}`,
@@ -1380,9 +1387,9 @@ export default function App() {
                                     }}
                                     className={cn(
                                       "w-10 h-10 rounded-lg flex items-center justify-center mx-auto font-bold transition-all",
-                                      avg === null ? "bg-slate-100 text-slate-400 hover:bg-blue-100 hover:text-blue-600" : 
-                                      avg >= 8 ? "bg-green-100 text-green-700" :
-                                      avg >= 5 ? "bg-blue-100 text-blue-700" : "bg-red-100 text-red-700"
+                                      avg === null ? "bg-slate-100 text-slate-400 hover:bg-blue-100 hover:text-blue-600" :
+                                        avg >= 8 ? "bg-green-100 text-green-700" :
+                                          avg >= 5 ? "bg-blue-100 text-blue-700" : "bg-red-100 text-red-700"
                                     )}
                                   >
                                     {avg !== null ? avg.toFixed(1) : '+'}
@@ -1405,19 +1412,19 @@ export default function App() {
             )}
 
             {activeTab === 'stats' && (
-              <motion.div 
+              <motion.div
                 key="stats"
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 className="space-y-8"
               >
                 <h2 className="text-2xl font-bold">Thống kê chi tiết</h2>
-                
+
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                   <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
                     <h3 className="text-lg font-bold mb-6">Phân loại học lực</h3>
                     <div className="h-80">
-                      <Bar 
+                      <Bar
                         data={{
                           labels: ['Giỏi', 'Khá', 'Trung bình', 'Yếu'],
                           datasets: [{
@@ -1434,7 +1441,7 @@ export default function App() {
                   <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
                     <h3 className="text-lg font-bold mb-6">Điểm trung bình theo môn</h3>
                     <div className="h-80">
-                      <Bar 
+                      <Bar
                         data={{
                           labels: data.subjects.map(s => s.name),
                           datasets: [{
@@ -1447,9 +1454,9 @@ export default function App() {
                             borderRadius: 8
                           }]
                         }}
-                        options={{ 
+                        options={{
                           indexAxis: 'y' as const,
-                          responsive: true, 
+                          responsive: true,
                           maintainAspectRatio: false,
                           scales: { x: { min: 0, max: 10 } }
                         }}
@@ -1461,7 +1468,7 @@ export default function App() {
                 <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
                   <h3 className="text-lg font-bold mb-6">Biến động nề nếp theo tháng</h3>
                   <div className="h-80">
-                    <Line 
+                    <Line
                       data={{
                         labels: ['Tháng 9', 'Tháng 10', 'Tháng 11', 'Tháng 12', 'Tháng 1', 'Tháng 2'],
                         datasets: [
@@ -1493,453 +1500,453 @@ export default function App() {
               const admissionStudent = data.students.find(s => s.id === admissionStudentId) || data.students[0];
               const examDate = dayjs('2026-06-01');
               const daysLeft = examDate.diff(dayjs(), 'day');
-              
-              return (
-              <motion.div 
-                key="admission"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                className="space-y-8"
-              >
-                <div className="flex justify-between items-center">
-                  <h2 className="text-2xl font-bold flex items-center gap-3"><Target className="text-blue-600" /> Quản lý Tuyển sinh 10</h2>
-                  <div className="flex items-center gap-3">
-                    <span className="text-sm text-slate-500 font-medium">Kỳ thi dự kiến: 01/06/2026</span>
-                    <div className="px-4 py-2 bg-rose-100 text-rose-700 font-bold rounded-xl flex items-center gap-2 shadow-sm border border-rose-200">
-                      <Clock size={18} />
-                      Còn {daysLeft > 0 ? daysLeft : 0} ngày
-                    </div>
-                  </div>
-                </div>
 
-                <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex items-center gap-4">
-                  <div className="w-12 h-12 bg-blue-50 text-blue-600 rounded-full flex items-center justify-center shrink-0">
-                    <Users size={24} />
-                  </div>
-                  <div className="flex-1">
-                    <h3 className="font-bold text-slate-700 mb-1">Chọn học sinh để theo dõi</h3>
-                    <select 
-                      className="w-full max-w-sm bg-slate-50 border border-slate-200 rounded-lg px-4 py-2 outline-none focus:bg-white focus:border-blue-500 transition-colors"
-                      value={admissionStudent?.id || ''}
-                      onChange={(e) => setAdmissionStudentId(e.target.value)}
-                    >
-                      {data.students.map(s => (
-                        <option key={s.id} value={s.id}>{s.name} - {s.class}</option>
-                      ))}
-                    </select>
-                  </div>
+              return (
+                <motion.div
+                  key="admission"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  className="space-y-8"
+              >
+            <div className="flex justify-between items-center">
+              <h2 className="text-2xl font-bold flex items-center gap-3"><Target className="text-blue-600" /> Quản lý Tuyển sinh 10</h2>
+              <div className="flex items-center gap-3">
+                <span className="text-sm text-slate-500 font-medium">Kỳ thi dự kiến: 01/06/2026</span>
+                <div className="px-4 py-2 bg-rose-100 text-rose-700 font-bold rounded-xl flex items-center gap-2 shadow-sm border border-rose-200">
+                  <Clock size={18} />
+                  Còn {daysLeft > 0 ? daysLeft : 0} ngày
                 </div>
+              </div>
+            </div>
+
+            <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex items-center gap-4">
+              <div className="w-12 h-12 bg-blue-50 text-blue-600 rounded-full flex items-center justify-center shrink-0">
+                <Users size={24} />
+              </div>
+              <div className="flex-1">
+                <h3 className="font-bold text-slate-700 mb-1">Chọn học sinh để theo dõi</h3>
+                <select
+                  className="w-full max-w-sm bg-slate-50 border border-slate-200 rounded-lg px-4 py-2 outline-none focus:bg-white focus:border-blue-500 transition-colors"
+                  value={admissionStudent?.id || ''}
+                  onChange={(e) => setAdmissionStudentId(e.target.value)}
+                >
+                  {data.students.map(s => (
+                    <option key={s.id} value={s.id}>{s.name} - {s.class}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
 
                 {admissionStudent && (
                   <>
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                    {/* Nguyện vọng */}
-                    <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col">
-                      <div className="p-6 border-b border-slate-100">
-                        <h3 className="text-lg font-bold flex items-center gap-2"><Target className="text-orange-500" /> Nguyện vọng xét tuyển</h3>
-                      </div>
-                      <div className="p-6 flex-1 space-y-4">
-                        {admissionStudent.targetSchools?.map((school: any, idx: number) => (
-                          <div key={school.id} className="p-4 bg-orange-50 rounded-xl border border-orange-100 flex justify-between items-center">
-                            <div>
-                              <p className="text-xs text-orange-600 font-bold uppercase tracking-wider mb-1">Nguyện vọng {idx + 1}</p>
-                              <h4 className="font-bold text-slate-800 text-lg">{school.name}</h4>
-                            </div>
-                            <div className="text-right">
-                              <p className="text-xs text-slate-500 mb-1">Điểm chuẩn dự kiến</p>
-                              <p className="font-bold text-2xl text-orange-600">{school.targetScore}</p>
-                            </div>
+                  {/* Nguyện vọng */}
+                  <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col">
+                    <div className="p-6 border-b border-slate-100">
+                      <h3 className="text-lg font-bold flex items-center gap-2"><Target className="text-orange-500" /> Nguyện vọng xét tuyển</h3>
+                    </div>
+                    <div className="p-6 flex-1 space-y-4">
+                      {admissionStudent.targetSchools?.map((school: any, idx: number) => (
+                        <div key={school.id} className="p-4 bg-orange-50 rounded-xl border border-orange-100 flex justify-between items-center">
+                          <div>
+                            <p className="text-xs text-orange-600 font-bold uppercase tracking-wider mb-1">Nguyện vọng {idx + 1}</p>
+                            <h4 className="font-bold text-slate-800 text-lg">{school.name}</h4>
                           </div>
-                        ))}
-                        {(!admissionStudent.targetSchools || admissionStudent.targetSchools.length === 0) && (
-                          <div className="p-8 text-center text-slate-400">
-                            Chưa có nguyện vọng nào được đăng ký.
+                          <div className="text-right">
+                            <p className="text-xs text-slate-500 mb-1">Điểm chuẩn dự kiến</p>
+                            <p className="font-bold text-2xl text-orange-600">{school.targetScore}</p>
                           </div>
-                        )}
-                        <button 
-                          onClick={() => {
-                            Swal.fire({
-                              title: 'Thêm Nguyện Vọng',
-                              html: `
+                        </div>
+                      ))}
+                      {(!admissionStudent.targetSchools || admissionStudent.targetSchools.length === 0) && (
+                        <div className="p-8 text-center text-slate-400">
+                          Chưa có nguyện vọng nào được đăng ký.
+                        </div>
+                      )}
+                      <button
+                        onClick={() => {
+                          Swal.fire({
+                            title: 'Thêm Nguyện Vọng',
+                            html: `
                                 <input id="swal-ts-name" class="swal2-input" placeholder="Tên trường THPT (VD: Nguyễn Thượng Hiền)">
                                 <input id="swal-ts-score" type="number" step="0.25" class="swal2-input" placeholder="Điểm chuẩn dự kiến">
                               `,
-                              focusConfirm: false,
-                              showCancelButton: true,
-                              confirmButtonText: 'Lưu',
-                              preConfirm: () => {
-                                const name = (document.getElementById('swal-ts-name') as HTMLInputElement).value;
-                                const score = parseFloat((document.getElementById('swal-ts-score') as HTMLInputElement).value);
-                                if (!name || isNaN(score)) {
-                                  Swal.showValidationMessage('Vui lòng nhập đầy đủ thông tin hợp lệ');
-                                }
-                                return { name, targetScore: score };
+                            focusConfirm: false,
+                            showCancelButton: true,
+                            confirmButtonText: 'Lưu',
+                            preConfirm: () => {
+                              const name = (document.getElementById('swal-ts-name') as HTMLInputElement).value;
+                              const score = parseFloat((document.getElementById('swal-ts-score') as HTMLInputElement).value);
+                              if (!name || isNaN(score)) {
+                                Swal.showValidationMessage('Vui lòng nhập đầy đủ thông tin hợp lệ');
                               }
-                            }).then((result) => {
-                              if (result.isConfirmed) {
-                                const newSchool = { id: Math.random().toString(), ...result.value };
-                                setData((prev: any) => ({
-                                  ...prev,
-                                  students: prev.students.map((s: any) => s.id === admissionStudent.id ? {
-                                    ...s,
-                                    targetSchools: [...(s.targetSchools || []), newSchool]
-                                  } : s)
-                                }));
-                              }
-                            });
-                          }}
-                          className="w-full p-3 border-2 border-dashed border-slate-200 text-slate-500 font-bold rounded-xl hover:bg-slate-50 hover:border-slate-300 transition-colors flex items-center justify-center gap-2 mt-auto"
-                        >
-                          <Plus size={18} /> Thêm trường nguyện vọng
-                        </button>
-                      </div>
+                              return { name, targetScore: score };
+                            }
+                          }).then((result) => {
+                            if (result.isConfirmed) {
+                              const newSchool = { id: Math.random().toString(), ...result.value };
+                              setData((prev: any) => ({
+                                ...prev,
+                                students: prev.students.map((s: any) => s.id === admissionStudent.id ? {
+                                  ...s,
+                                  targetSchools: [...(s.targetSchools || []), newSchool]
+                                } : s)
+                              }));
+                            }
+                          });
+                        }}
+                        className="w-full p-3 border-2 border-dashed border-slate-200 text-slate-500 font-bold rounded-xl hover:bg-slate-50 hover:border-slate-300 transition-colors flex items-center justify-center gap-2 mt-auto"
+                      >
+                        <Plus size={18} /> Thêm trường nguyện vọng
+                      </button>
                     </div>
+                  </div>
 
-                    {/* Điểm thi thử */}
-                    <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col">
-                      <div className="p-6 border-b border-slate-100 flex justify-between items-center">
-                        <h3 className="text-lg font-bold flex items-center gap-2"><BookOpen className="text-blue-500" /> Kết quả thi thử</h3>
-                        <button 
-                          onClick={() => {
-                            Swal.fire({
-                              title: 'Nhập điểm thi thử',
-                              html: `
+                  {/* Điểm thi thử */}
+                  <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col">
+                    <div className="p-6 border-b border-slate-100 flex justify-between items-center">
+                      <h3 className="text-lg font-bold flex items-center gap-2"><BookOpen className="text-blue-500" /> Kết quả thi thử</h3>
+                      <button
+                        onClick={() => {
+                          Swal.fire({
+                            title: 'Nhập điểm thi thử',
+                            html: `
                                 <input id="swal-mock-date" type="text" class="swal2-input" placeholder="Tên/Ngày thi (VD: Lần 1 - 15/04)">
                                 <input id="swal-mock-math" type="number" step="0.25" class="swal2-input" placeholder="Điểm Toán">
                                 <input id="swal-mock-lit" type="number" step="0.25" class="swal2-input" placeholder="Điểm Ngữ Văn">
                                 <input id="swal-mock-eng" type="number" step="0.25" class="swal2-input" placeholder="Điểm Tiếng Anh">
                                 <input id="swal-mock-prio" type="number" step="0.25" class="swal2-input" placeholder="Điểm Ưu Tiên (Nếu có)">
                               `,
-                              focusConfirm: false,
-                              showCancelButton: true,
-                              confirmButtonText: 'Lưu',
-                              preConfirm: () => {
-                                const date = (document.getElementById('swal-mock-date') as HTMLInputElement).value;
-                                const math = parseFloat((document.getElementById('swal-mock-math') as HTMLInputElement).value);
-                                const lit = parseFloat((document.getElementById('swal-mock-lit') as HTMLInputElement).value);
-                                const eng = parseFloat((document.getElementById('swal-mock-eng') as HTMLInputElement).value);
-                                const prio = parseFloat((document.getElementById('swal-mock-prio') as HTMLInputElement).value) || 0;
-                                if (!date || isNaN(math) || isNaN(lit) || isNaN(eng)) {
-                                  Swal.showValidationMessage('Vui lòng nhập đủ tên kì thi và điểm 3 môn');
-                                }
-                                return { date, math, literature: lit, english: eng, priority: prio };
+                            focusConfirm: false,
+                            showCancelButton: true,
+                            confirmButtonText: 'Lưu',
+                            preConfirm: () => {
+                              const date = (document.getElementById('swal-mock-date') as HTMLInputElement).value;
+                              const math = parseFloat((document.getElementById('swal-mock-math') as HTMLInputElement).value);
+                              const lit = parseFloat((document.getElementById('swal-mock-lit') as HTMLInputElement).value);
+                              const eng = parseFloat((document.getElementById('swal-mock-eng') as HTMLInputElement).value);
+                              const prio = parseFloat((document.getElementById('swal-mock-prio') as HTMLInputElement).value) || 0;
+                              if (!date || isNaN(math) || isNaN(lit) || isNaN(eng)) {
+                                Swal.showValidationMessage('Vui lòng nhập đủ tên kì thi và điểm 3 môn');
                               }
-                            }).then((result) => {
-                              if (result.isConfirmed) {
-                                const newMock = { id: Math.random().toString(), ...result.value };
-                                setData((prev: any) => ({
-                                  ...prev,
-                                  students: prev.students.map((s: any) => s.id === admissionStudent.id ? {
-                                    ...s,
-                                    mockExams: [...(s.mockExams || []), newMock]
-                                  } : s)
-                                }));
-                              }
-                            });
-                          }}
-                          className="text-sm font-bold text-blue-600 bg-blue-50 px-3 py-1.5 rounded-lg hover:bg-blue-100 transition-colors"
-                        >+ Thêm điểm mới</button>
-                      </div>
-                      <div className="p-6 flex-1 overflow-y-auto max-h-[500px] space-y-4">
-                        {admissionStudent.mockExams?.map((exam: any) => {
-                          const totalBaseScore = (exam.math + exam.literature) * 2 + exam.english + (exam.priority || 0);
-                          let statusColor = "bg-slate-100 text-slate-800";
-                          let statusText = "Chưa xác định";
-                          
-                          if (admissionStudent.targetSchools && admissionStudent.targetSchools.length > 0) {
-                            const target = admissionStudent.targetSchools[0].targetScore;
-                            const diff = totalBaseScore - target;
-                            if (diff >= 1) {
-                              statusColor = "bg-green-100 text-green-700 border-green-200";
-                              statusText = "Phạm vi An Toàn";
-                            } else if (diff >= -1) {
-                              statusColor = "bg-yellow-100 text-yellow-700 border-yellow-200";
-                              statusText = "Cần cố gắng";
-                            } else {
-                              statusColor = "bg-red-100 text-red-700 border-red-200";
-                              statusText = "Rủi ro cao";
+                              return { date, math, literature: lit, english: eng, priority: prio };
                             }
-                          }
+                          }).then((result) => {
+                            if (result.isConfirmed) {
+                              const newMock = { id: Math.random().toString(), ...result.value };
+                              setData((prev: any) => ({
+                                ...prev,
+                                students: prev.students.map((s: any) => s.id === admissionStudent.id ? {
+                                  ...s,
+                                  mockExams: [...(s.mockExams || []), newMock]
+                                } : s)
+                              }));
+                            }
+                          });
+                        }}
+                        className="text-sm font-bold text-blue-600 bg-blue-50 px-3 py-1.5 rounded-lg hover:bg-blue-100 transition-colors"
+                      >+ Thêm điểm mới</button>
+                    </div>
+                    <div className="p-6 flex-1 overflow-y-auto max-h-[500px] space-y-4">
+                      {admissionStudent.mockExams?.map((exam: any) => {
+                        const totalBaseScore = (exam.math + exam.literature) * 2 + exam.english + (exam.priority || 0);
+                        let statusColor = "bg-slate-100 text-slate-800";
+                        let statusText = "Chưa xác định";
 
-                          return (
-                            <div key={exam.id} className="p-5 border border-slate-200 rounded-xl hover:shadow-md transition-shadow">
-                              <div className="flex justify-between items-start mb-4">
-                                <div className="font-bold text-slate-800 flex items-center gap-2">
-                                  <Calendar size={16} className="text-blue-500"/> {exam.date}
-                                </div>
-                                <div className={cn("px-3 py-1 rounded-full text-xs font-bold border", statusColor)}>
-                                  {statusText}
-                                </div>
+                        if (admissionStudent.targetSchools && admissionStudent.targetSchools.length > 0) {
+                          const target = admissionStudent.targetSchools[0].targetScore;
+                          const diff = totalBaseScore - target;
+                          if (diff >= 1) {
+                            statusColor = "bg-green-100 text-green-700 border-green-200";
+                            statusText = "Phạm vi An Toàn";
+                          } else if (diff >= -1) {
+                            statusColor = "bg-yellow-100 text-yellow-700 border-yellow-200";
+                            statusText = "Cần cố gắng";
+                          } else {
+                            statusColor = "bg-red-100 text-red-700 border-red-200";
+                            statusText = "Rủi ro cao";
+                          }
+                        }
+
+                        return (
+                          <div key={exam.id} className="p-5 border border-slate-200 rounded-xl hover:shadow-md transition-shadow">
+                            <div className="flex justify-between items-start mb-4">
+                              <div className="font-bold text-slate-800 flex items-center gap-2">
+                                <Calendar size={16} className="text-blue-500" /> {exam.date}
                               </div>
-                              <div className="grid grid-cols-4 gap-2 mb-4">
-                                <div className="bg-slate-50 p-2 rounded-lg text-center">
-                                  <p className="text-[10px] text-slate-500 font-bold uppercase">Toán (x2)</p>
-                                  <p className="font-bold text-slate-800">{exam.math}</p>
-                                </div>
-                                <div className="bg-slate-50 p-2 rounded-lg text-center">
-                                  <p className="text-[10px] text-slate-500 font-bold uppercase">Ngữ Văn (x2)</p>
-                                  <p className="font-bold text-slate-800">{exam.literature}</p>
-                                </div>
-                                <div className="bg-slate-50 p-2 rounded-lg text-center">
-                                  <p className="text-[10px] text-slate-500 font-bold uppercase">Anh (x1)</p>
-                                  <p className="font-bold text-slate-800">{exam.english}</p>
-                                </div>
-                                <div className="bg-slate-50 p-2 rounded-lg text-center">
-                                  <p className="text-[10px] text-slate-500 font-bold uppercase">Ưu tiên</p>
-                                  <p className="font-bold text-slate-800">+{exam.priority || 0}</p>
-                                </div>
-                              </div>
-                              <div className="pt-3 border-t border-slate-100 flex justify-between items-center">
-                                <span className="text-sm text-slate-500 font-medium">Tổng điểm xét tuyển:</span>
-                                <span className="text-2xl font-black text-blue-600">{totalBaseScore.toFixed(2)}</span>
+                              <div className={cn("px-3 py-1 rounded-full text-xs font-bold border", statusColor)}>
+                                {statusText}
                               </div>
                             </div>
-                          );
-                        })}
-                        {(!admissionStudent.mockExams || admissionStudent.mockExams.length === 0) && (
-                          <div className="p-8 text-center text-slate-400">
-                            Chưa có điểm thi thử nào được ghi nhận.
+                            <div className="grid grid-cols-4 gap-2 mb-4">
+                              <div className="bg-slate-50 p-2 rounded-lg text-center">
+                                <p className="text-[10px] text-slate-500 font-bold uppercase">Toán (x2)</p>
+                                <p className="font-bold text-slate-800">{exam.math}</p>
+                              </div>
+                              <div className="bg-slate-50 p-2 rounded-lg text-center">
+                                <p className="text-[10px] text-slate-500 font-bold uppercase">Ngữ Văn (x2)</p>
+                                <p className="font-bold text-slate-800">{exam.literature}</p>
+                              </div>
+                              <div className="bg-slate-50 p-2 rounded-lg text-center">
+                                <p className="text-[10px] text-slate-500 font-bold uppercase">Anh (x1)</p>
+                                <p className="font-bold text-slate-800">{exam.english}</p>
+                              </div>
+                              <div className="bg-slate-50 p-2 rounded-lg text-center">
+                                <p className="text-[10px] text-slate-500 font-bold uppercase">Ưu tiên</p>
+                                <p className="font-bold text-slate-800">+{exam.priority || 0}</p>
+                              </div>
+                            </div>
+                            <div className="pt-3 border-t border-slate-100 flex justify-between items-center">
+                              <span className="text-sm text-slate-500 font-medium">Tổng điểm xét tuyển:</span>
+                              <span className="text-2xl font-black text-blue-600">{totalBaseScore.toFixed(2)}</span>
+                            </div>
                           </div>
-                        )}
-                      </div>
+                        );
+                      })}
+                      {(!admissionStudent.mockExams || admissionStudent.mockExams.length === 0) && (
+                        <div className="p-8 text-center text-slate-400">
+                          Chưa có điểm thi thử nào được ghi nhận.
+                        </div>
+                      )}
                     </div>
                   </div>
-                  
-                  {/* Điểm chuẩn 2025 & Gợi ý trường học */}
-                  <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col mt-8">
-                    <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50">
-                      <div>
-                        <h3 className="text-xl font-bold flex items-center gap-2"><Award className="text-purple-600" /> Điểm chuẩn năm 2025 & Gợi ý trường học</h3>
-                        <p className="text-sm text-slate-500 mt-1">Dựa trên điểm trung bình: Toán, Ngữ Văn, Tiếng Anh từ mục Điểm số (Quy chuẩn hệ số 1)</p>
-                      </div>
-                      <div className="flex gap-2">
-                        <button
-                          onClick={downloadAdmissionScoresTemplate}
-                          className="text-sm font-medium text-emerald-600 bg-emerald-50 px-3 py-2 rounded-lg hover:bg-emerald-100 transition-colors flex items-center gap-2"
-                        >
-                          <FileSpreadsheet size={16} /> Mẫu Excel
-                        </button>
-                        <label className="text-sm font-medium text-white bg-slate-800 px-3 py-2 rounded-lg hover:bg-slate-700 transition-colors cursor-pointer flex items-center gap-2">
-                          <Upload size={16} /> Tải điểm chuẩn (Excel)
-                          <input 
-                            type="file" 
-                            accept=".xlsx, .xls" 
-                            className="hidden" 
-                            onChange={importAdmissionScoresFromExcel}
-                          />
-                        </label>
-                      </div>
-                    </div>
-                    
-                    <div className="p-6 flex-1 flex flex-col lg:flex-row gap-8">
-                      {/* Cột tính toán điểm và gợi ý */}
-                      <div className="flex-1 space-y-6">
-                        {(() => {
-                          const mathGrades = data.grades.filter(g => g.studentId === admissionStudent.id && g.subjectId === 'math');
-                          const litGrades = data.grades.filter(g => g.studentId === admissionStudent.id && g.subjectId === 'literature');
-                          const engGrades = data.grades.filter(g => g.studentId === admissionStudent.id && g.subjectId === 'english');
-                          
-                          const avgMath = mathGrades.length > 0 ? mathGrades.reduce((a, b) => a + b.value, 0) / mathGrades.length : 0;
-                          const avgLit = litGrades.length > 0 ? litGrades.reduce((a, b) => a + b.value, 0) / litGrades.length : 0;
-                          const avgEng = engGrades.length > 0 ? engGrades.reduce((a, b) => a + b.value, 0) / engGrades.length : 0;
-                          
-                          const hasScore = mathGrades.length > 0 || litGrades.length > 0 || engGrades.length > 0;
-                          const estimatedScore = avgMath + avgLit + avgEng;
+                </div>
 
-                          return (
-                            <>
-                              <div className="bg-purple-50 rounded-2xl p-6 border border-purple-100">
-                                <h4 className="font-bold text-slate-700 mb-4 flex justify-between items-center">
-                                  <span>Điểm năng lực hiện tại</span>
-                                  <span className="text-xs font-normal text-slate-500">Môn Toán + Văn + Anh</span>
-                                </h4>
-                                {hasScore ? (
-                                  <div className="flex items-center justify-between">
-                                    <div className="flex gap-4">
-                                      <div className="text-center">
-                                        <p className="text-xs text-slate-500 uppercase font-bold">Toán</p>
-                                        <p className="font-bold text-lg">{avgMath.toFixed(1)}</p>
-                                      </div>
-                                      <div className="text-center">
-                                        <p className="text-xs text-slate-500 uppercase font-bold">Văn</p>
-                                        <p className="font-bold text-lg">{avgLit.toFixed(1)}</p>
-                                      </div>
-                                      <div className="text-center">
-                                        <p className="text-xs text-slate-500 uppercase font-bold">Anh</p>
-                                        <p className="font-bold text-lg">{avgEng.toFixed(1)}</p>
-                                      </div>
+                {/* Điểm chuẩn 2025 & Gợi ý trường học */}
+                <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col mt-8">
+                  <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+                    <div>
+                      <h3 className="text-xl font-bold flex items-center gap-2"><Award className="text-purple-600" /> Điểm chuẩn năm 2025 & Gợi ý trường học</h3>
+                      <p className="text-sm text-slate-500 mt-1">Dựa trên điểm trung bình: Toán, Ngữ Văn, Tiếng Anh từ mục Điểm số (Quy chuẩn hệ số 1)</p>
+                    </div>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={downloadAdmissionScoresTemplate}
+                        className="text-sm font-medium text-emerald-600 bg-emerald-50 px-3 py-2 rounded-lg hover:bg-emerald-100 transition-colors flex items-center gap-2"
+                      >
+                        <FileSpreadsheet size={16} /> Mẫu Excel
+                      </button>
+                      <label className="text-sm font-medium text-white bg-slate-800 px-3 py-2 rounded-lg hover:bg-slate-700 transition-colors cursor-pointer flex items-center gap-2">
+                        <Upload size={16} /> Tải điểm chuẩn (Excel)
+                        <input
+                          type="file"
+                          accept=".xlsx, .xls"
+                          className="hidden"
+                          onChange={importAdmissionScoresFromExcel}
+                        />
+                      </label>
+                    </div>
+                  </div>
+
+                  <div className="p-6 flex-1 flex flex-col lg:flex-row gap-8">
+                    {/* Cột tính toán điểm và gợi ý */}
+                    <div className="flex-1 space-y-6">
+                      {(() => {
+                        const mathGrades = data.grades.filter(g => g.studentId === admissionStudent.id && g.subjectId === 'math');
+                        const litGrades = data.grades.filter(g => g.studentId === admissionStudent.id && g.subjectId === 'literature');
+                        const engGrades = data.grades.filter(g => g.studentId === admissionStudent.id && g.subjectId === 'english');
+
+                        const avgMath = mathGrades.length > 0 ? mathGrades.reduce((a, b) => a + b.value, 0) / mathGrades.length : 0;
+                        const avgLit = litGrades.length > 0 ? litGrades.reduce((a, b) => a + b.value, 0) / litGrades.length : 0;
+                        const avgEng = engGrades.length > 0 ? engGrades.reduce((a, b) => a + b.value, 0) / engGrades.length : 0;
+
+                        const hasScore = mathGrades.length > 0 || litGrades.length > 0 || engGrades.length > 0;
+                        const estimatedScore = (avgMath + avgLit) * 2 + avgEng;
+
+                        return (
+                          <>
+                            <div className="bg-purple-50 rounded-2xl p-6 border border-purple-100">
+                              <h4 className="font-bold text-slate-700 mb-4 flex justify-between items-center">
+                                <span>Điểm xét tuyển dự kiến</span>
+                                <span className="text-xs font-normal text-slate-500">(Toán + Văn) x2 + Anh</span>
+                              </h4>
+                              {hasScore ? (
+                                <div className="flex items-center justify-between">
+                                  <div className="flex gap-4">
+                                    <div className="text-center">
+                                      <p className="text-xs text-slate-500 uppercase font-bold">Toán</p>
+                                      <p className="font-bold text-lg">{avgMath.toFixed(1)}</p>
                                     </div>
-                                    <div className="text-right">
-                                      <p className="text-sm font-bold text-slate-500">Tổng quy đổi</p>
-                                      <p className="text-3xl font-black text-purple-700">{estimatedScore.toFixed(2)}</p>
+                                    <div className="text-center">
+                                      <p className="text-xs text-slate-500 uppercase font-bold">Văn</p>
+                                      <p className="font-bold text-lg">{avgLit.toFixed(1)}</p>
+                                    </div>
+                                    <div className="text-center">
+                                      <p className="text-xs text-slate-500 uppercase font-bold">Anh</p>
+                                      <p className="font-bold text-lg">{avgEng.toFixed(1)}</p>
                                     </div>
                                   </div>
-                                ) : (
-                                  <p className="text-slate-500 text-sm">Học sinh chưa có điểm số nào ở các môn Toán, Ngữ văn, Tiếng Anh.</p>
-                                )}
-                              </div>
-                              
-                              <div className="space-y-4">
-                                <h4 className="font-bold text-slate-700 flexItems-center gap-2">Trường phù hợp với trình độ</h4>
-                                {hasScore && (data.admissionScores2025 || []).length > 0 ? (
-                                  <div className="space-y-3">
-                                    {(data.admissionScores2025 || [])
-                                      .filter(school => school.targetScore <= estimatedScore + 1.5)
-                                      .sort((a, b) => b.targetScore - a.targetScore)
-                                      .slice(0, 5)
-                                      .map(school => {
-                                        const diff = estimatedScore - school.targetScore;
-                                        const safetyClass = diff >= 1.5 ? 'border-green-200 bg-green-50' : diff >= 0 ? 'border-blue-200 bg-blue-50' : 'border-orange-200 bg-orange-50';
-                                        const safetyText = diff >= 1.5 ? 'Rất An toàn' : diff >= 0 ? 'Vừa sức' : 'Hơi với';
-                                        
-                                        return (
-                                          <div key={`${school.name}-${school.targetScore}`} className={cn("p-4 border rounded-xl flex justify-between items-center", safetyClass)}>
-                                            <div>
-                                              <p className="font-bold text-slate-800">{school.name}</p>
-                                              <p className="text-xs font-medium text-slate-600 mt-1">Trạng thái: {safetyText}</p>
-                                            </div>
-                                            <div className="text-right">
-                                              <p className="font-bold text-lg text-slate-800">{school.targetScore}</p>
-                                            </div>
-                                          </div>
-                                        );
-                                      })
-                                    }
+                                  <div className="text-right">
+                                    <p className="text-sm font-bold text-slate-500">Tổng quy đổi</p>
+                                    <p className="text-3xl font-black text-purple-700">{estimatedScore.toFixed(2)}</p>
                                   </div>
-                                ) : (
-                                  <div className="p-4 bg-slate-50 rounded-xl text-sm text-slate-500 border border-slate-100 italic">
-                                    {!hasScore ? 'Cần cập nhật điểm số để có gợi ý.' : 'Chưa có dữ liệu điểm chuẩn. Vui lòng tải lên file Excel điểm chuẩn 2025.'}
-                                  </div>
-                                )}
-                              </div>
-                            </>
-                          );
-                        })()}
-                      </div>
-                      
-                      {/* Cột hiển thị toàn danh sách đã tải */}
-                      <div className="flex-1 border-tl lg:border-t-0 lg:border-l border-slate-200 pt-6 lg:pt-0 lg:pl-8">
-                         <h4 className="font-bold text-slate-700 mb-4 flex justify-between items-center">
-                            <span>Bảng Điểm Chuẩn 2025</span>
-                            <span className="text-xs bg-slate-100 text-slate-600 px-2 py-1 rounded-md">
-                              {(data.admissionScores2025 || []).length} trường
-                            </span>
-                         </h4>
-                         
-                         {(data.admissionScores2025 || []).length > 0 ? (
-                           <div className="max-h-[350px] overflow-y-auto border border-slate-200 rounded-xl">
-                              <table className="w-full text-left text-sm border-collapse">
-                                <thead className="bg-slate-50 sticky top-0 border-b border-slate-200">
-                                  <tr>
-                                    <th className="p-3 font-bold text-slate-600">Trường THPT</th>
-                                    <th className="p-3 font-bold text-slate-600 font-mono text-right">Điểm</th>
-                                  </tr>
-                                </thead>
-                                <tbody className="divide-y divide-slate-100">
+                                </div>
+                              ) : (
+                                <p className="text-slate-500 text-sm">Học sinh chưa có điểm số nào ở các môn Toán, Ngữ văn, Tiếng Anh.</p>
+                              )}
+                            </div>
+
+                            <div className="space-y-4">
+                              <h4 className="font-bold text-slate-700 flexItems-center gap-2">Trường phù hợp với trình độ</h4>
+                              {hasScore && (data.admissionScores2025 || []).length > 0 ? (
+                                <div className="space-y-3">
                                   {(data.admissionScores2025 || [])
-                                    .slice()
+                                    .filter(school => school.targetScore <= estimatedScore + 1.5)
                                     .sort((a, b) => b.targetScore - a.targetScore)
-                                    .map((s, idx) => (
-                                    <tr key={idx} className="hover:bg-slate-50">
-                                      <td className="p-3 font-medium text-slate-700">{s.name}</td>
-                                      <td className="p-3 font-bold text-slate-900 text-right">{s.targetScore}</td>
-                                    </tr>
-                                  ))}
-                                </tbody>
-                              </table>
-                           </div>
-                         ) : (
-                           <div className="h-full min-h-[300px] flex flex-col items-center justify-center text-center text-slate-400 border-2 border-dashed border-slate-200 rounded-xl p-8">
-                             <FileSpreadsheet size={48} className="mb-4 text-slate-300" />
-                             <p>Hệ thống chưa có bảng điểm chuẩn quy chiếu.</p>
-                             <p className="text-sm mt-2">Dữ liệu sẽ hiển thị tại đây sau khi bạn tải file Excel lên.</p>
-                           </div>
-                         )}
-                      </div>
+                                    .slice(0, 5)
+                                    .map(school => {
+                                      const diff = estimatedScore - school.targetScore;
+                                      const safetyClass = diff >= 1.5 ? 'border-green-200 bg-green-50' : diff >= 0 ? 'border-blue-200 bg-blue-50' : 'border-orange-200 bg-orange-50';
+                                      const safetyText = diff >= 1.5 ? 'Rất An toàn' : diff >= 0 ? 'Vừa sức' : 'Hơi với';
+
+                                      return (
+                                        <div key={`${school.name}-${school.targetScore}`} className={cn("p-4 border rounded-xl flex justify-between items-center", safetyClass)}>
+                                          <div>
+                                            <p className="font-bold text-slate-800">{school.name}</p>
+                                            <p className="text-xs font-medium text-slate-600 mt-1">Trạng thái: {safetyText}</p>
+                                          </div>
+                                          <div className="text-right">
+                                            <p className="font-bold text-lg text-slate-800">{school.targetScore}</p>
+                                          </div>
+                                        </div>
+                                      );
+                                    })
+                                  }
+                                </div>
+                              ) : (
+                                <div className="p-4 bg-slate-50 rounded-xl text-sm text-slate-500 border border-slate-100 italic">
+                                  {!hasScore ? 'Cần cập nhật điểm số để có gợi ý.' : 'Chưa có dữ liệu điểm chuẩn. Vui lòng tải lên file Excel điểm chuẩn 2025.'}
+                                </div>
+                              )}
+                            </div>
+                          </>
+                        );
+                      })()}
                     </div>
+
+                    {/* Cột hiển thị toàn danh sách đã tải */}
+                    <div className="flex-1 border-tl lg:border-t-0 lg:border-l border-slate-200 pt-6 lg:pt-0 lg:pl-8">
+                      <h4 className="font-bold text-slate-700 mb-4 flex justify-between items-center">
+                        <span>Bảng Điểm Chuẩn 2025</span>
+                        <span className="text-xs bg-slate-100 text-slate-600 px-2 py-1 rounded-md">
+                          {(data.admissionScores2025 || []).length} trường
+                        </span>
+                      </h4>
+
+                      {(data.admissionScores2025 || []).length > 0 ? (
+                        <div className="max-h-[350px] overflow-y-auto border border-slate-200 rounded-xl">
+                          <table className="w-full text-left text-sm border-collapse">
+                            <thead className="bg-slate-50 sticky top-0 border-b border-slate-200">
+                              <tr>
+                                <th className="p-3 font-bold text-slate-600">Trường THPT</th>
+                                <th className="p-3 font-bold text-slate-600 font-mono text-right">Điểm</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-slate-100">
+                              {(data.admissionScores2025 || [])
+                                .slice()
+                                .sort((a, b) => b.targetScore - a.targetScore)
+                                .map((s, idx) => (
+                                  <tr key={idx} className="hover:bg-slate-50">
+                                    <td className="p-3 font-medium text-slate-700">{s.name}</td>
+                                    <td className="p-3 font-bold text-slate-900 text-right">{s.targetScore}</td>
+                                  </tr>
+                                ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      ) : (
+                        <div className="h-full min-h-[300px] flex flex-col items-center justify-center text-center text-slate-400 border-2 border-dashed border-slate-200 rounded-xl p-8">
+                          <FileSpreadsheet size={48} className="mb-4 text-slate-300" />
+                          <p>Hệ thống chưa có bảng điểm chuẩn quy chiếu.</p>
+                          <p className="text-sm mt-2">Dữ liệu sẽ hiển thị tại đây sau khi bạn tải file Excel lên.</p>
+                        </div>
+                      )}
                     </div>
-                  </>
-                )}
-              </motion.div>
-              );
+                  </div>
+                </div>
+              </>
+            )}
+          </motion.div>
+          );
             })()}
 
-            {activeTab === 'attendance' && <AttendanceTab data={data} setData={setData} />}
-            {activeTab === 'funds' && <FundsTab data={data} setData={setData} />}
-            {activeTab === 'tasks' && <TasksTab data={data} setData={setData} />}
-            {activeTab === 'seating' && <SeatingTab data={data} setData={setData} />}
+          {activeTab === 'attendance' && <AttendanceTab data={data} setData={setData} />}
+          {activeTab === 'funds' && <FundsTab data={data} setData={setData} />}
+          {activeTab === 'tasks' && <TasksTab data={data} setData={setData} />}
+          {activeTab === 'seating' && <SeatingTab data={data} setData={setData} />}
 
-          </AnimatePresence>
-        </div>
-      </main>
-
-      <ParentReportModal student={reportStudent} data={data} onClose={() => setReportStudent(null)} />
-
-      {/* API Key Modal */}
-      <AnimatePresence>
-        {showApiModal && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm">
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              className="bg-white rounded-3xl shadow-2xl overflow-hidden max-w-md w-full"
-            >
-              <div className="bg-gradient-to-r from-blue-600 to-blue-700 p-6 flex justify-between items-start">
-                <div className="text-white">
-                  <h3 className="text-xl font-bold flex items-center gap-2">
-                    <Key size={24} />
-                    Cấu hình API Key
-                  </h3>
-                  <p className="text-blue-100 text-sm mt-1">EduManage cần Gemini API Key để hoạt động</p>
-                </div>
-                {data.settings.apiKey && (
-                  <button onClick={() => setShowApiModal(false)} className="text-white/70 hover:text-white transition-colors">
-                    <XCircle size={24} />
-                  </button>
-                )}
-              </div>
-              <div className="p-6 space-y-6">
-                <div>
-                  <label className="block text-sm font-bold text-slate-700 mb-2">Nhập API Key của bạn</label>
-                  <input 
-                    type="password" 
-                    value={data.settings.apiKey}
-                    onChange={(e) => setData(prev => ({ ...prev, settings: { ...prev.settings, apiKey: e.target.value } }))}
-                    placeholder="AIzaSy..."
-                    className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 font-mono text-sm"
-                  />
-                </div>
-                
-                <div className="bg-orange-50 border border-orange-100 rounded-xl p-4 flex gap-3 text-sm text-orange-800">
-                  <AlertCircle size={20} className="shrink-0 text-orange-500" />
-                  <div>
-                    <p className="font-bold mb-1">Bạn chưa có API Key?</p>
-                    <p>Hãy truy cập <a href="https://aistudio.google.com/api-keys" target="_blank" rel="noreferrer" className="text-blue-600 hover:underline font-bold">Google AI Studio</a> để lấy key miễn phí nhé.</p>
-                  </div>
-                </div>
-
-                <div className="flex gap-3 pt-2">
-                  <button 
-                    onClick={() => {
-                      if (!data.settings.apiKey) {
-                        Swal.fire('Lỗi', 'Vui lòng nhập API Key', 'error');
-                        return;
-                      }
-                      setShowApiModal(false);
-                      Swal.fire({ title: 'Đã lưu!', icon: 'success', toast: true, position: 'top-end', showConfirmButton: false, timer: 1500 });
-                    }}
-                    className="flex-1 py-3 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-700 transition-colors shadow-lg shadow-blue-200"
-                  >
-                    Lưu cấu hình
-                  </button>
-                </div>
-              </div>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
+        </AnimatePresence>
     </div>
+      </main >
+
+    <ParentReportModal student={reportStudent} data={data} onClose={() => setReportStudent(null)} />
+
+  {/* API Key Modal */ }
+  <AnimatePresence>
+    {showApiModal && (
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm">
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          exit={{ opacity: 0, scale: 0.95 }}
+          className="bg-white rounded-3xl shadow-2xl overflow-hidden max-w-md w-full"
+        >
+          <div className="bg-gradient-to-r from-blue-600 to-blue-700 p-6 flex justify-between items-start">
+            <div className="text-white">
+              <h3 className="text-xl font-bold flex items-center gap-2">
+                <Key size={24} />
+                Cấu hình API Key
+              </h3>
+              <p className="text-blue-100 text-sm mt-1">EduManage cần Gemini API Key để hoạt động</p>
+            </div>
+            {data.settings.apiKey && (
+              <button onClick={() => setShowApiModal(false)} className="text-white/70 hover:text-white transition-colors">
+                <XCircle size={24} />
+              </button>
+            )}
+          </div>
+          <div className="p-6 space-y-6">
+            <div>
+              <label className="block text-sm font-bold text-slate-700 mb-2">Nhập API Key của bạn</label>
+              <input
+                type="password"
+                value={data.settings.apiKey}
+                onChange={(e) => setData(prev => ({ ...prev, settings: { ...prev.settings, apiKey: e.target.value } }))}
+                placeholder="AIzaSy..."
+                className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 font-mono text-sm"
+              />
+            </div>
+
+            <div className="bg-orange-50 border border-orange-100 rounded-xl p-4 flex gap-3 text-sm text-orange-800">
+              <AlertCircle size={20} className="shrink-0 text-orange-500" />
+              <div>
+                <p className="font-bold mb-1">Bạn chưa có API Key?</p>
+                <p>Hãy truy cập <a href="https://aistudio.google.com/api-keys" target="_blank" rel="noreferrer" className="text-blue-600 hover:underline font-bold">Google AI Studio</a> để lấy key miễn phí nhé.</p>
+              </div>
+            </div>
+
+            <div className="flex gap-3 pt-2">
+              <button
+                onClick={() => {
+                  if (!data.settings.apiKey) {
+                    Swal.fire('Lỗi', 'Vui lòng nhập API Key', 'error');
+                    return;
+                  }
+                  setShowApiModal(false);
+                  Swal.fire({ title: 'Đã lưu!', icon: 'success', toast: true, position: 'top-end', showConfirmButton: false, timer: 1500 });
+                }}
+                className="flex-1 py-3 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-700 transition-colors shadow-lg shadow-blue-200"
+              >
+                Lưu cấu hình
+              </button>
+            </div>
+          </div>
+        </motion.div>
+      </div>
+    )}
+  </AnimatePresence>
+    </div >
   );
 }
 
