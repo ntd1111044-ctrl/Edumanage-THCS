@@ -766,7 +766,7 @@ export default function App() {
                 </div>
               </button>
             </div>
-            <p className="text-center text-white/30 text-xs">Mật khẩu GV mặc định: 1234 (có thể đổi trong Cài đặt)</p>
+            <p className="text-center text-white/30 text-xs">Liên hệ giáo viên chủ nhiệm để lấy mật khẩu</p>
           </div>
         </motion.div>
       </div>
