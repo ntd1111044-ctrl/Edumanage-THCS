@@ -45,6 +45,15 @@ export interface HomeworkSubmission {
   status: 'done' | 'missing' | 'late';
 }
 
+export interface AwardRecord {
+  id: string;
+  studentId: string;
+  title: string;
+  category: 'academic' | 'behavior' | 'sports' | 'arts' | 'other';
+  date: string;
+  description?: string;
+}
+
 export interface Student {
   id: string;
   name: string;
@@ -98,6 +107,7 @@ export interface AppData {
   tasks: HomeworkTask[];
   submissions: HomeworkSubmission[];
   admissionScores2025: AdmissionScore[];
+  awards: AwardRecord[];
   settings: {
     theme: 'light' | 'dark';
     apiKey: string;
@@ -128,6 +138,7 @@ export const INITIAL_DATA: AppData = {
   tasks: [],
   submissions: [],
   admissionScores2025: [],
+  awards: [],
   settings: {
     theme: 'light',
     apiKey: '',
