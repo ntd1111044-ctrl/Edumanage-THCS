@@ -45,6 +45,7 @@ import {
   LogOut,
   Lock,
   Eye,
+  MessageCircle,
   UserCheck,
   Shield
 } from 'lucide-react';
@@ -78,6 +79,7 @@ import AttendanceTab from './components/AttendanceTab';
 import FundsTab from './components/FundsTab';
 import TasksTab from './components/TasksTab';
 import SeatingTab from './components/SeatingTab';
+import ForumTab from './components/ForumTab';
 import ParentReportModal from './components/ParentReportModal';
 
 // Register ChartJS
@@ -113,13 +115,14 @@ export default function App() {
         attendance: parsed.attendance || [],
         tasks: parsed.tasks || [],
         submissions: parsed.submissions || [],
-        admissionScores2025: parsed.admissionScores2025 || []
+        admissionScores2025: parsed.admissionScores2025 || [],
+        forumPosts: parsed.forumPosts || [],
       };
     }
     return INITIAL_DATA;
   });
 
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'students' | 'grades' | 'behavior' | 'stats' | 'ai' | 'settings' | 'admission' | 'funds' | 'attendance' | 'tasks' | 'seating'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'students' | 'grades' | 'behavior' | 'stats' | 'ai' | 'settings' | 'admission' | 'funds' | 'attendance' | 'tasks' | 'seating' | 'forum'>('dashboard');
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedClass, setSelectedClass] = useState('All');
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
@@ -798,6 +801,7 @@ export default function App() {
           <SidebarItem id="tasks" icon={CheckSquare} label="Bài tập" />
           <SidebarItem id="funds" icon={Wallet} label="Quỹ lớp" />
           <SidebarItem id="seating" icon={Presentation} label="Sơ đồ lớp" />
+          <SidebarItem id="forum" icon={MessageCircle} label="Diễn đàn" />
           <SidebarItem id="stats" icon={BarChart3} label="Thống kê" />
           <SidebarItem id="ai" icon={MessageSquare} label="AI Tutor" teacherOnly />
         </nav>
@@ -2202,6 +2206,7 @@ export default function App() {
           {activeTab === 'funds' && <FundsTab data={data} setData={setData} userRole={userRole} />}
           {activeTab === 'tasks' && <TasksTab data={data} setData={setData} userRole={userRole} />}
           {activeTab === 'seating' && <SeatingTab data={data} setData={setData} userRole={userRole} />}
+          {activeTab === 'forum' && <ForumTab data={data} setData={setData} userRole={userRole} />}
 
         </AnimatePresence>
     </div>
