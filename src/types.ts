@@ -102,6 +102,7 @@ export interface AppData {
     theme: 'light' | 'dark';
     apiKey: string;
     selectedModel: string;
+    teacherPassword: string;
   };
 }
 
@@ -131,5 +132,6 @@ export const INITIAL_DATA: AppData = {
     theme: 'light',
     apiKey: '',
     selectedModel: 'gemini-3-flash-preview',
+    teacherPassword: '1234',
   },
 };
