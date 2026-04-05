@@ -8,9 +8,11 @@ import { AppData, FundTransaction } from '../types';
 interface Props {
   data: AppData;
   setData: React.Dispatch<React.SetStateAction<AppData>>;
+  userRole: 'teacher' | 'student';
 }
 
-export default function FundsTab({ data, setData }: Props) {
+export default function FundsTab({ data, setData, userRole }: Props) {
+  const isTeacher = userRole === 'teacher';
   const totalIn = useMemo(() => data.funds.filter(f => f.type === 'in').reduce((a, b) => a + b.amount, 0), [data.funds]);
   const totalOut = useMemo(() => data.funds.filter(f => f.type === 'out').reduce((a, b) => a + b.amount, 0), [data.funds]);
   const balance = totalIn - totalOut;
@@ -75,20 +77,22 @@ export default function FundsTab({ data, setData }: Props) {
         <h2 className="text-2xl font-bold flex items-center gap-3">
           <Wallet className="text-blue-600" /> Quỹ lớp
         </h2>
-        <div className="flex gap-3">
-          <button
-            onClick={() => addTransaction('in')}
-            className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-xl hover:bg-green-700 transition-colors shadow-lg shadow-green-200 font-medium"
-          >
-            <ArrowDownRight size={18} /> Thu tiền
-          </button>
-          <button
-            onClick={() => addTransaction('out')}
-            className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-xl hover:bg-red-700 transition-colors shadow-lg shadow-red-200 font-medium"
-          >
-            <ArrowUpRight size={18} /> Chi tiền
-          </button>
-        </div>
+        {isTeacher && (
+          <div className="flex gap-3">
+            <button
+              onClick={() => addTransaction('in')}
+              className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-xl hover:bg-green-700 transition-colors shadow-lg shadow-green-200 font-medium"
+            >
+              <ArrowDownRight size={18} /> Thu tiền
+            </button>
+            <button
+              onClick={() => addTransaction('out')}
+              className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-xl hover:bg-red-700 transition-colors shadow-lg shadow-red-200 font-medium"
+            >
+              <ArrowUpRight size={18} /> Chi tiền
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Summary cards */}
@@ -137,9 +141,11 @@ export default function FundsTab({ data, setData }: Props) {
                 <div className={`font-bold text-lg ${tx.type === 'in' ? 'text-green-600' : 'text-red-600'}`}>
                   {tx.type === 'in' ? '+' : '-'}{formatMoney(tx.amount)}
                 </div>
-                <button onClick={() => deleteTransaction(tx.id)} className="p-2 text-slate-400 hover:text-red-500 rounded-lg transition-colors">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
-                </button>
+                {isTeacher && (
+                  <button onClick={() => deleteTransaction(tx.id)} className="p-2 text-slate-400 hover:text-red-500 rounded-lg transition-colors">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
+                  </button>
+                )}
               </div>
             ))
           )}
