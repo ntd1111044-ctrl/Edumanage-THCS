@@ -129,6 +129,7 @@ export default function App() {
   const [targetStudentId, setTargetStudentId] = useState<string>('');
   const [admissionStudentId, setAdmissionStudentId] = useState<string>('');
   const [reportStudent, setReportStudent] = useState<Student | null>(null);
+  const [selectedStudents, setSelectedStudents] = useState<Set<string>>(new Set());
   const [userRole, setUserRole] = useState<'teacher' | 'student' | null>(() => {
     const savedRole = localStorage.getItem('edumanage_role');
     return savedRole === 'teacher' || savedRole === 'student' ? savedRole : null;
@@ -1084,15 +1085,86 @@ export default function App() {
                   )}
                 </div>
 
+                {/* Selection toolbar */}
+                {isTeacher && (
+                  <div className="flex items-center justify-between bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
+                    <label className="flex items-center gap-3 cursor-pointer select-none">
+                      <input
+                        type="checkbox"
+                        checked={filteredStudents.length > 0 && filteredStudents.every(s => selectedStudents.has(s.id))}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            setSelectedStudents(new Set(filteredStudents.map(s => s.id)));
+                          } else {
+                            setSelectedStudents(new Set());
+                          }
+                        }}
+                        className="w-5 h-5 rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                      />
+                      <span className="text-sm font-medium text-slate-600">
+                        {selectedStudents.size > 0 ? `Đã chọn ${selectedStudents.size} học sinh` : 'Chọn tất cả'}
+                      </span>
+                    </label>
+                    {selectedStudents.size > 0 && (
+                      <button
+                        onClick={() => {
+                          Swal.fire({
+                            title: `Xóa ${selectedStudents.size} học sinh?`,
+                            text: 'Tất cả điểm số, nề nếp của các học sinh này cũng sẽ bị xóa. Hành động không thể hoàn tác!',
+                            icon: 'warning',
+                            showCancelButton: true,
+                            confirmButtonColor: '#ef4444',
+                            confirmButtonText: `Xóa ${selectedStudents.size} học sinh`,
+                            cancelButtonText: 'Hủy',
+                          }).then((result) => {
+                            if (result.isConfirmed) {
+                              setData(prev => ({
+                                ...prev,
+                                students: prev.students.filter(s => !selectedStudents.has(s.id)),
+                                grades: prev.grades.filter(g => !selectedStudents.has(g.studentId)),
+                                behaviors: prev.behaviors.filter(b => !selectedStudents.has(b.studentId)),
+                                attendance: prev.attendance.filter(a => !selectedStudents.has(a.studentId)),
+                                submissions: prev.submissions.filter(s => !selectedStudents.has(s.studentId)),
+                              }));
+                              setSelectedStudents(new Set());
+                              Swal.fire({ title: 'Đã xóa!', text: `${selectedStudents.size} học sinh đã được xóa.`, icon: 'success', timer: 2000, showConfirmButton: false, toast: true, position: 'top-end' });
+                            }
+                          });
+                        }}
+                        className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-xl hover:bg-red-700 transition-colors font-medium shadow-lg shadow-red-200"
+                      >
+                        <Trash2 size={18} />
+                        Xóa đã chọn
+                      </button>
+                    )}
+                  </div>
+                )}
+
                 <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
                   {filteredStudents.map(student => {
                     const avg = data.grades.filter(g => g.studentId === student.id).reduce((a, b) => a + b.value, 0) / (data.grades.filter(g => g.studentId === student.id).length || 1);
                     const behaviorPoints = data.behaviors.filter(b => b.studentId === student.id).reduce((a, b) => a + b.points, 0);
 
                     return (
-                      <div key={student.id} className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition-all group">
+                      <div key={student.id} className={cn("bg-white p-6 rounded-2xl border shadow-sm hover:shadow-md transition-all group", selectedStudents.has(student.id) ? 'border-blue-400 ring-2 ring-blue-100' : 'border-slate-200')}>
                         <div className="flex items-start justify-between mb-4">
                           <div className="flex items-center gap-4">
+                            {isTeacher && (
+                              <input
+                                type="checkbox"
+                                checked={selectedStudents.has(student.id)}
+                                onChange={(e) => {
+                                  const next = new Set(selectedStudents);
+                                  if (e.target.checked) {
+                                    next.add(student.id);
+                                  } else {
+                                    next.delete(student.id);
+                                  }
+                                  setSelectedStudents(next);
+                                }}
+                                className="w-5 h-5 rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer shrink-0"
+                              />
+                            )}
                             {isTeacher ? (
                               <label className="relative block w-14 h-14 rounded-2xl bg-slate-100 overflow-hidden shrink-0 border border-slate-200 shadow-sm cursor-pointer group">
                                 <img
