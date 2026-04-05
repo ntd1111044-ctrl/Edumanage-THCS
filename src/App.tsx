@@ -64,7 +64,6 @@ import 'dayjs/locale/vi';
 import relativeTime from 'dayjs/plugin/relativeTime';
 import { Marked } from 'marked';
 import Swal from 'sweetalert2';
-import * as XLSX from 'xlsx';
 import { Document, Packer, Paragraph, TextRun, HeadingLevel, AlignmentType } from 'docx';
 
 import { cn } from './lib/utils';
@@ -1787,7 +1786,7 @@ export default function App() {
                             </div>
 
                             <div className="space-y-4">
-                              <h4 className="font-bold text-slate-700 flexItems-center gap-2">Trường phù hợp với trình độ</h4>
+                              <h4 className="font-bold text-slate-700 flex items-center gap-2">Trường phù hợp với trình độ</h4>
                               {hasScore && (data.admissionScores2025 || []).length > 0 ? (
                                 <div className="space-y-3">
                                   {(data.admissionScores2025 || [])
