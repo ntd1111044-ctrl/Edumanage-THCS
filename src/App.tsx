@@ -800,17 +800,27 @@ export default function App() {
                     <h3 className="text-lg font-bold mb-6">Xu hướng học tập</h3>
                     <div className="h-80">
                       <Line
-                        data={{
-                          labels: ['Tuần 1', 'Tuần 2', 'Tuần 3', 'Tuần 4', 'Tuần 5', 'Tuần 6'],
-                          datasets: [{
-                            label: 'Điểm trung bình',
-                            data: [7.2, 7.5, 7.3, 7.8, 8.1, 8.0],
-                            borderColor: '#2563eb',
-                            backgroundColor: 'rgba(37, 99, 235, 0.1)',
-                            fill: true,
-                            tension: 0.4
-                          }]
-                        }}
+                        data={(() => {
+                          const sortedGrades = [...data.grades].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+                          const chunkSize = Math.max(1, Math.ceil(sortedGrades.length / 6));
+                          const chunks: number[][] = [];
+                          for (let i = 0; i < sortedGrades.length; i += chunkSize) {
+                            chunks.push(sortedGrades.slice(i, i + chunkSize).map(g => g.value));
+                          }
+                          const labels = chunks.length > 0 ? chunks.map((_, i) => `Giai đoạn ${i + 1}`) : ['Chưa có dữ liệu'];
+                          const avgData = chunks.length > 0 ? chunks.map(c => parseFloat((c.reduce((a, b) => a + b, 0) / c.length).toFixed(1))) : [0];
+                          return {
+                            labels,
+                            datasets: [{
+                              label: 'Điểm trung bình',
+                              data: avgData,
+                              borderColor: '#2563eb',
+                              backgroundColor: 'rgba(37, 99, 235, 0.1)',
+                              fill: true,
+                              tension: 0.4
+                            }]
+                          };
+                        })()}
                         options={{ responsive: true, maintainAspectRatio: false }}
                       />
                     </div>
@@ -819,14 +829,25 @@ export default function App() {
                     <h3 className="text-lg font-bold mb-6">Phân bổ hạnh kiểm</h3>
                     <div className="h-80 flex items-center justify-center">
                       <Doughnut
-                        data={{
-                          labels: ['Tốt', 'Khá', 'Trung bình', 'Yếu'],
-                          datasets: [{
-                            data: [65, 20, 10, 5],
-                            backgroundColor: ['#10b981', '#3b82f6', '#f59e0b', '#ef4444'],
-                            borderWidth: 0
-                          }]
-                        }}
+                        data={(() => {
+                          let tot = 0, kha = 0, tb = 0, yeu = 0;
+                          data.students.forEach(s => {
+                            const pts = data.behaviors.filter(b => b.studentId === s.id).reduce((a, b) => a + b.points, 0);
+                            const score = 100 + pts;
+                            if (score >= 90) tot++;
+                            else if (score >= 70) kha++;
+                            else if (score >= 50) tb++;
+                            else yeu++;
+                          });
+                          return {
+                            labels: ['Tốt', 'Khá', 'Trung bình', 'Yếu'],
+                            datasets: [{
+                              data: [tot, kha, tb, yeu],
+                              backgroundColor: ['#10b981', '#3b82f6', '#f59e0b', '#ef4444'],
+                              borderWidth: 0
+                            }]
+                          };
+                        })()}
                         options={{ cutout: '70%', plugins: { legend: { position: 'bottom' } } }}
                       />
                     </div>
@@ -897,7 +918,43 @@ export default function App() {
                         onChange={importFromExcel}
                       />
                     </label>
-                    <button className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors shadow-lg shadow-blue-200">
+                    <button
+                      onClick={() => {
+                        Swal.fire({
+                          title: 'Thêm học sinh mới',
+                          html: `
+                            <input id="swal-student-name" class="swal2-input" placeholder="Họ tên (VD: Nguyễn Văn F)">
+                            <input id="swal-student-class" class="swal2-input" placeholder="Lớp (VD: 9A1)">
+                          `,
+                          focusConfirm: false,
+                          showCancelButton: true,
+                          confirmButtonText: 'Thêm',
+                          cancelButtonText: 'Hủy',
+                          preConfirm: () => {
+                            const name = (document.getElementById('swal-student-name') as HTMLInputElement).value.trim();
+                            const cls = (document.getElementById('swal-student-class') as HTMLInputElement).value.trim();
+                            if (!name || !cls) {
+                              Swal.showValidationMessage('Vui lòng nhập đầy đủ họ tên và lớp');
+                              return;
+                            }
+                            return { name, class: cls };
+                          }
+                        }).then((result) => {
+                          if (result.isConfirmed && result.value) {
+                            setData(prev => ({
+                              ...prev,
+                              students: [...prev.students, {
+                                id: Math.random().toString(36).substr(2, 9),
+                                name: result.value.name,
+                                class: result.value.class
+                              }]
+                            }));
+                            Swal.fire({ title: 'Đã thêm!', icon: 'success', timer: 1500, showConfirmButton: false, toast: true, position: 'top-end' });
+                          }
+                        });
+                      }}
+                      className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors shadow-lg shadow-blue-200"
+                    >
                       <Plus size={20} />
                       Thêm học sinh
                     </button>
@@ -1424,15 +1481,27 @@ export default function App() {
                     <h3 className="text-lg font-bold mb-6">Phân loại học lực</h3>
                     <div className="h-80">
                       <Bar
-                        data={{
-                          labels: ['Giỏi', 'Khá', 'Trung bình', 'Yếu'],
-                          datasets: [{
-                            label: 'Số lượng học sinh',
-                            data: [12, 25, 8, 2],
-                            backgroundColor: ['#10b981', '#3b82f6', '#f59e0b', '#ef4444'],
-                            borderRadius: 8
-                          }]
-                        }}
+                        data={(() => {
+                          let gioi = 0, kha = 0, tb = 0, yeu = 0;
+                          data.students.forEach(s => {
+                            const sg = data.grades.filter(g => g.studentId === s.id);
+                            if (sg.length === 0) return;
+                            const avg = sg.reduce((a, b) => a + b.value, 0) / sg.length;
+                            if (avg >= 8) gioi++;
+                            else if (avg >= 6.5) kha++;
+                            else if (avg >= 5) tb++;
+                            else yeu++;
+                          });
+                          return {
+                            labels: ['Giỏi', 'Khá', 'Trung bình', 'Yếu'],
+                            datasets: [{
+                              label: 'Số lượng học sinh',
+                              data: [gioi, kha, tb, yeu],
+                              backgroundColor: ['#10b981', '#3b82f6', '#f59e0b', '#ef4444'],
+                              borderRadius: 8
+                            }]
+                          };
+                        })()}
                         options={{ responsive: true, maintainAspectRatio: false }}
                       />
                     </div>
@@ -1468,27 +1537,33 @@ export default function App() {
                   <h3 className="text-lg font-bold mb-6">Biến động nề nếp theo tháng</h3>
                   <div className="h-80">
                     <Line
-                      data={{
-                        labels: ['Tháng 9', 'Tháng 10', 'Tháng 11', 'Tháng 12', 'Tháng 1', 'Tháng 2'],
-                        datasets: [
-                          {
-                            label: 'Tích cực',
-                            data: [45, 52, 48, 60, 55, 68],
-                            borderColor: '#10b981',
-                            backgroundColor: 'rgba(16, 185, 129, 0.1)',
-                            fill: true,
-                            tension: 0.4
-                          },
-                          {
-                            label: 'Vi phạm',
-                            data: [15, 12, 18, 10, 8, 5],
-                            borderColor: '#ef4444',
-                            backgroundColor: 'rgba(239, 68, 68, 0.1)',
-                            fill: true,
-                            tension: 0.4
-                          }
-                        ]
-                      }}
+                      data={(() => {
+                        const months = ['Tháng 9', 'Tháng 10', 'Tháng 11', 'Tháng 12', 'Tháng 1', 'Tháng 2'];
+                        const monthNums = [9, 10, 11, 12, 1, 2];
+                        const positiveByMonth = monthNums.map(m => data.behaviors.filter(b => b.type === 'positive' && new Date(b.date).getMonth() + 1 === m).length);
+                        const negativeByMonth = monthNums.map(m => data.behaviors.filter(b => b.type === 'negative' && new Date(b.date).getMonth() + 1 === m).length);
+                        return {
+                          labels: months,
+                          datasets: [
+                            {
+                              label: 'Tích cực',
+                              data: positiveByMonth,
+                              borderColor: '#10b981',
+                              backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                              fill: true,
+                              tension: 0.4
+                            },
+                            {
+                              label: 'Vi phạm',
+                              data: negativeByMonth,
+                              borderColor: '#ef4444',
+                              backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                              fill: true,
+                              tension: 0.4
+                            }
+                          ]
+                        };
+                      })()}
                       options={{ responsive: true, maintainAspectRatio: false }}
                     />
                   </div>

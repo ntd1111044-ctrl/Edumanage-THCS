@@ -82,6 +82,12 @@ export interface Subject {
   icon: string;
 }
 
+export interface AdmissionScore {
+  id: string;
+  name: string;
+  targetScore: number;
+}
+
 export interface AppData {
   students: Student[];
   subjects: Subject[];
@@ -91,6 +97,7 @@ export interface AppData {
   attendance: AttendanceRecord[];
   tasks: HomeworkTask[];
   submissions: HomeworkSubmission[];
+  admissionScores2025: AdmissionScore[];
   settings: {
     theme: 'light' | 'dark';
     apiKey: string;
@@ -119,6 +126,7 @@ export const INITIAL_DATA: AppData = {
   attendance: [],
   tasks: [],
   submissions: [],
+  admissionScores2025: [],
   settings: {
     theme: 'light',
     apiKey: '',

@@ -17,45 +17,42 @@ export async function callGeminiAI(
   prompt: string, 
   apiKey: string, 
   modelId?: string, 
-  fallbackIndex: number = 0
+  _triedModels: string[] = []
 ): Promise<string> {
   if (!apiKey) {
     throw new Error('Vui lòng cấu hình API Key trong phần cài đặt.');
   }
 
-  // Use explicitly requested model or fallback model
-  let targetModel = modelId;
-  
-  // If no initial model is specified, use the fallback order
-  if (!targetModel) {
-    targetModel = FALLBACK_MODELS[fallbackIndex];
-  } else if (fallbackIndex > 0) {
-    // If we're retrying and explicitly specified model failed,
-    // we use the fallback list.
-    targetModel = FALLBACK_MODELS[fallbackIndex - 1]; // Offset index
-  }
+  // Build ordered model list: requested model first, then fallbacks
+  const orderedModels = modelId
+    ? [modelId, ...FALLBACK_MODELS.filter(m => m !== modelId)]
+    : [...FALLBACK_MODELS];
 
-  // Final check: if we exhausted the list
-  if (fallbackIndex > FALLBACK_MODELS.length || !targetModel) {
-    throw new Error(`Đã thử tất cả các model nhưng vẫn xảy ra lỗi. Vui lòng thử lại sau.`);
+  // Find next model that hasn't been tried yet
+  const nextModel = orderedModels.find(m => !_triedModels.includes(m));
+
+  if (!nextModel) {
+    throw new Error('Đã thử tất cả các model nhưng vẫn xảy ra lỗi. Vui lòng thử lại sau.');
   }
 
   const ai = new GoogleGenAI({ apiKey });
   
   try {
     const response = await ai.models.generateContent({
-      model: targetModel,
+      model: nextModel,
       contents: [{ parts: [{ text: prompt }] }],
     });
     
     return response.text || '';
   } catch (error: any) {
-    console.error(`Gemini API Error with model [${targetModel}]:`, error.message);
+    console.error(`Gemini API Error with model [${nextModel}]:`, error.message);
     
-    // Only fallback if we have remaining models in the list
-    if (fallbackIndex < FALLBACK_MODELS.length) {
-      console.log(`Đang tự động Fallback sang model kế tiếp (${fallbackIndex + 1}/${FALLBACK_MODELS.length})...`);
-      return callGeminiAI(prompt, apiKey, modelId, fallbackIndex + 1);
+    const newTriedModels = [..._triedModels, nextModel];
+    const remaining = orderedModels.filter(m => !newTriedModels.includes(m));
+    
+    if (remaining.length > 0) {
+      console.log(`Đang tự động Fallback sang model kế tiếp: ${remaining[0]}...`);
+      return callGeminiAI(prompt, apiKey, modelId, newTriedModels);
     }
     
     // Completely exhausted
