@@ -8,9 +8,11 @@ import { AppData, HomeworkTask, HomeworkSubmission } from '../types';
 interface Props {
   data: AppData;
   setData: React.Dispatch<React.SetStateAction<AppData>>;
+  userRole: 'teacher' | 'student';
 }
 
-export default function TasksTab({ data, setData }: Props) {
+export default function TasksTab({ data, setData, userRole }: Props) {
+  const isTeacher = userRole === 'teacher';
   const [selectedTaskId, setSelectedTaskId] = useState<string>('');
 
   const addTask = () => {
@@ -111,12 +113,14 @@ export default function TasksTab({ data, setData }: Props) {
         <h2 className="text-2xl font-bold flex items-center gap-3">
           <CheckSquare className="text-blue-600" /> Quản lý bài tập
         </h2>
-        <button
-          onClick={addTask}
-          className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors shadow-lg shadow-blue-200 font-medium"
-        >
-          <Plus size={18} /> Tạo bài tập
-        </button>
+        {isTeacher && (
+          <button
+            onClick={addTask}
+            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors shadow-lg shadow-blue-200 font-medium"
+          >
+            <Plus size={18} /> Tạo bài tập
+          </button>
+        )}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -139,9 +143,11 @@ export default function TasksTab({ data, setData }: Props) {
                 >
                   <div className="flex justify-between items-start mb-2">
                     <h4 className="font-bold text-slate-800">{task.title}</h4>
-                    <button onClick={(e) => { e.stopPropagation(); deleteTask(task.id); }} className="p-1 text-slate-400 hover:text-red-500 transition-colors">
-                      <XCircle size={16} />
-                    </button>
+                    {isTeacher && (
+                      <button onClick={(e) => { e.stopPropagation(); deleteTask(task.id); }} className="p-1 text-slate-400 hover:text-red-500 transition-colors">
+                        <XCircle size={16} />
+                      </button>
+                    )}
                   </div>
                   {task.description && <p className="text-sm text-slate-500 mb-2">{task.description}</p>}
                   <div className="flex justify-between items-center">
@@ -170,7 +176,7 @@ export default function TasksTab({ data, setData }: Props) {
                     <th className="p-4 font-bold text-slate-700">Học sinh</th>
                     <th className="p-4 font-bold text-slate-700">Lớp</th>
                     <th className="p-4 font-bold text-slate-700 text-center">Trạng thái</th>
-                    <th className="p-4 font-bold text-slate-700 text-center">Hành động</th>
+                    {isTeacher && <th className="p-4 font-bold text-slate-700 text-center">Hành động</th>}
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
@@ -190,19 +196,21 @@ export default function TasksTab({ data, setData }: Props) {
                             <span className="text-slate-400 text-sm">—</span>
                           )}
                         </td>
-                        <td className="p-4">
-                          <div className="flex justify-center gap-1">
-                            {(['done', 'late', 'missing'] as const).map(s => (
-                              <button
-                                key={s}
-                                onClick={() => markSubmission(selectedTask.id, student.id, s)}
-                                className={`px-3 py-1 rounded-lg text-xs font-medium transition-all ${status === s ? statusConfig[s].color + ' ring-1 ring-current' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'}`}
-                              >
-                                {statusConfig[s].label}
-                              </button>
-                            ))}
-                          </div>
-                        </td>
+                        {isTeacher && (
+                          <td className="p-4">
+                            <div className="flex justify-center gap-1">
+                              {(['done', 'late', 'missing'] as const).map(s => (
+                                <button
+                                  key={s}
+                                  onClick={() => markSubmission(selectedTask.id, student.id, s)}
+                                  className={`px-3 py-1 rounded-lg text-xs font-medium transition-all ${status === s ? statusConfig[s].color + ' ring-1 ring-current' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'}`}
+                                >
+                                  {statusConfig[s].label}
+                                </button>
+                              ))}
+                            </div>
+                          </td>
+                        )}
                       </tr>
                     );
                   })}
