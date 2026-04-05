@@ -8,9 +8,11 @@ import { AppData, AttendanceRecord } from '../types';
 interface Props {
   data: AppData;
   setData: React.Dispatch<React.SetStateAction<AppData>>;
+  userRole: 'teacher' | 'student';
 }
 
-export default function AttendanceTab({ data, setData }: Props) {
+export default function AttendanceTab({ data, setData, userRole }: Props) {
+  const isTeacher = userRole === 'teacher';
   const [selectedDate, setSelectedDate] = useState(dayjs().format('YYYY-MM-DD'));
   const [selectedClass, setSelectedClass] = useState('All');
 
@@ -106,12 +108,14 @@ export default function AttendanceTab({ data, setData }: Props) {
           >
             {classes.map(c => <option key={c} value={c}>{c === 'All' ? 'Tất cả lớp' : c}</option>)}
           </select>
-          <button
-            onClick={markAllPresent}
-            className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-xl hover:bg-green-700 transition-colors shadow-lg shadow-green-200 font-medium"
-          >
-            <CheckCircle2 size={18} /> Điểm danh tất cả
-          </button>
+          {isTeacher && (
+            <button
+              onClick={markAllPresent}
+              className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-xl hover:bg-green-700 transition-colors shadow-lg shadow-green-200 font-medium"
+            >
+              <CheckCircle2 size={18} /> Điểm danh tất cả
+            </button>
+          )}
         </div>
       </div>
 
@@ -143,7 +147,7 @@ export default function AttendanceTab({ data, setData }: Props) {
               <th className="p-4 font-bold text-slate-700">Học sinh</th>
               <th className="p-4 font-bold text-slate-700">Lớp</th>
               <th className="p-4 font-bold text-slate-700 text-center">Trạng thái</th>
-              <th className="p-4 font-bold text-slate-700 text-center">Hành động</th>
+              {isTeacher && <th className="p-4 font-bold text-slate-700 text-center">Hành động</th>}
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
@@ -164,20 +168,22 @@ export default function AttendanceTab({ data, setData }: Props) {
                       <span className="text-slate-400 text-sm">Chưa điểm danh</span>
                     )}
                   </td>
-                  <td className="p-4">
-                    <div className="flex justify-center gap-2">
-                      {(['present', 'absent', 'late'] as const).map(s => (
-                        <button
-                          key={s}
-                          onClick={() => markAttendance(student.id, s)}
-                          className={`p-2 rounded-lg transition-all text-sm font-medium ${status === s ? statusConfig[s].btnColor + ' ring-2 ring-offset-1 ring-current' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'}`}
-                          title={statusConfig[s].label}
-                        >
-                          {React.createElement(statusConfig[s].icon, { size: 16 })}
-                        </button>
-                      ))}
-                    </div>
-                  </td>
+                  {isTeacher && (
+                    <td className="p-4">
+                      <div className="flex justify-center gap-2">
+                        {(['present', 'absent', 'late'] as const).map(s => (
+                          <button
+                            key={s}
+                            onClick={() => markAttendance(student.id, s)}
+                            className={`p-2 rounded-lg transition-all text-sm font-medium ${status === s ? statusConfig[s].btnColor + ' ring-2 ring-offset-1 ring-current' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'}`}
+                            title={statusConfig[s].label}
+                          >
+                            {React.createElement(statusConfig[s].icon, { size: 16 })}
+                          </button>
+                        ))}
+                      </div>
+                    </td>
+                  )}
                 </tr>
               );
             })}
