@@ -41,7 +41,12 @@ import {
   CalendarCheck,
   CheckSquare,
   Presentation,
-  Printer
+  Printer,
+  LogOut,
+  Lock,
+  Eye,
+  UserCheck,
+  Shield
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
@@ -124,13 +129,20 @@ export default function App() {
   const [targetStudentId, setTargetStudentId] = useState<string>('');
   const [admissionStudentId, setAdmissionStudentId] = useState<string>('');
   const [reportStudent, setReportStudent] = useState<Student | null>(null);
+  const [userRole, setUserRole] = useState<'teacher' | 'student' | null>(() => {
+    const savedRole = localStorage.getItem('edumanage_role');
+    return savedRole === 'teacher' || savedRole === 'student' ? savedRole : null;
+  });
+
+  const isTeacher = userRole === 'teacher';
+  const teacherPassword = data.settings.teacherPassword || '1234';
 
   // Show modal if no API key is provided
   useEffect(() => {
-    if (!data.settings.apiKey) {
+    if (!data.settings.apiKey && userRole === 'teacher') {
       setShowApiModal(true);
     }
-  }, []);
+  }, [userRole]);
 
   // Save to localStorage whenever data changes
   useEffect(() => {
@@ -652,20 +664,114 @@ export default function App() {
 
   // --- Components ---
 
-  const SidebarItem = ({ id, icon: Icon, label }: { id: typeof activeTab, icon: any, label: string }) => (
-    <button
-      onClick={() => setActiveTab(id)}
-      className={cn(
-        "flex items-center gap-3 w-full px-4 py-3 rounded-xl transition-all duration-200",
-        activeTab === id
-          ? "bg-blue-600 text-white shadow-lg shadow-blue-200"
-          : "text-slate-600 hover:bg-slate-100"
-      )}
-    >
-      <Icon size={20} />
-      <span className={cn("font-medium", !isSidebarOpen && "hidden")}>{label}</span>
-    </button>
-  );
+  const SidebarItem = ({ id, icon: Icon, label, teacherOnly }: { id: typeof activeTab, icon: any, label: string, teacherOnly?: boolean }) => {
+    if (teacherOnly && !isTeacher) return null;
+    return (
+      <button
+        onClick={() => setActiveTab(id)}
+        className={cn(
+          "flex items-center gap-3 w-full px-4 py-3 rounded-xl transition-all duration-200",
+          activeTab === id
+            ? "bg-blue-600 text-white shadow-lg shadow-blue-200"
+            : "text-slate-600 hover:bg-slate-100"
+        )}
+      >
+        <Icon size={20} />
+        <span className={cn("font-medium", !isSidebarOpen && "hidden")}>{label}</span>
+      </button>
+    );
+  };
+
+  const handleLogin = (role: 'teacher' | 'student', password?: string) => {
+    if (role === 'teacher') {
+      if (password !== teacherPassword) {
+        Swal.fire('Sai mật khẩu', 'Mật khẩu giáo viên không đúng. Vui lòng thử lại.', 'error');
+        return;
+      }
+    }
+    setUserRole(role);
+    localStorage.setItem('edumanage_role', role);
+  };
+
+  const handleLogout = () => {
+    setUserRole(null);
+    localStorage.removeItem('edumanage_role');
+    setActiveTab('dashboard');
+  };
+
+  // --- Login Screen ---
+  if (!userRole) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-950 to-slate-900 flex items-center justify-center p-4">
+        <div className="absolute inset-0 overflow-hidden">
+          <div className="absolute -top-40 -right-40 w-80 h-80 bg-blue-500/10 rounded-full blur-3xl" />
+          <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-orange-500/10 rounded-full blur-3xl" />
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-blue-600/5 rounded-full blur-3xl" />
+        </div>
+        <motion.div
+          initial={{ opacity: 0, y: 40 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, ease: 'easeOut' }}
+          className="relative z-10 w-full max-w-lg"
+        >
+          <div className="text-center mb-10">
+            <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-blue-500 to-orange-500 flex items-center justify-center text-white mx-auto mb-6 shadow-2xl shadow-blue-500/30">
+              <GraduationCap size={40} />
+            </div>
+            <h1 className="text-4xl font-black text-white tracking-tight">EduManage</h1>
+            <p className="text-blue-300/70 mt-2 text-lg">Hệ thống quản lý lớp học thông minh</p>
+          </div>
+
+          <div className="bg-white/10 backdrop-blur-xl border border-white/20 rounded-3xl p-8 shadow-2xl">
+            <h2 className="text-xl font-bold text-white text-center mb-6">Chọn vai trò của bạn</h2>
+            <div className="grid grid-cols-2 gap-4 mb-6">
+              <button
+                onClick={() => {
+                  Swal.fire({
+                    title: 'Đăng nhập Giáo viên',
+                    input: 'password',
+                    inputLabel: 'Nhập mật khẩu GV',
+                    inputPlaceholder: 'Mật khẩu...',
+                    showCancelButton: true,
+                    confirmButtonText: 'Đăng nhập',
+                    cancelButtonText: 'Hủy',
+                    confirmButtonColor: '#2563eb',
+                    inputAttributes: { autocapitalize: 'off' },
+                  }).then((result) => {
+                    if (result.isConfirmed) {
+                      handleLogin('teacher', result.value);
+                    }
+                  });
+                }}
+                className="group flex flex-col items-center gap-4 p-6 rounded-2xl border-2 border-blue-400/30 bg-blue-500/10 hover:bg-blue-500/20 hover:border-blue-400/60 transition-all duration-300"
+              >
+                <div className="w-16 h-16 rounded-2xl bg-blue-500/20 flex items-center justify-center text-blue-400 group-hover:scale-110 transition-transform">
+                  <Shield size={32} />
+                </div>
+                <div>
+                  <p className="font-bold text-white text-lg">Giáo viên</p>
+                  <p className="text-blue-300/60 text-xs mt-1">Toàn quyền chỉnh sửa</p>
+                </div>
+              </button>
+              <button
+                onClick={() => handleLogin('student')}
+                className="group flex flex-col items-center gap-4 p-6 rounded-2xl border-2 border-green-400/30 bg-green-500/10 hover:bg-green-500/20 hover:border-green-400/60 transition-all duration-300"
+              >
+                <div className="w-16 h-16 rounded-2xl bg-green-500/20 flex items-center justify-center text-green-400 group-hover:scale-110 transition-transform">
+                  <Eye size={32} />
+                </div>
+                <div>
+                  <p className="font-bold text-white text-lg">Học sinh</p>
+                  <p className="text-green-300/60 text-xs mt-1">Chỉ được xem</p>
+                </div>
+              </button>
+            </div>
+            <p className="text-center text-white/30 text-xs">Mật khẩu GV mặc định: 1234 (có thể đổi trong Cài đặt)</p>
+          </div>
+        </motion.div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex h-screen bg-slate-50 overflow-hidden">
@@ -685,18 +791,25 @@ export default function App() {
           <SidebarItem id="dashboard" icon={LayoutDashboard} label="Tổng quan" />
           <SidebarItem id="students" icon={Users} label="Học sinh" />
           <SidebarItem id="grades" icon={GraduationCap} label="Điểm số" />
-          <SidebarItem id="behavior" icon={ShieldCheck} label="Nề nếp" />
+          <SidebarItem id="behavior" icon={ShieldCheck} label="Nề nếp" teacherOnly />
           <SidebarItem id="admission" icon={Target} label="Tuyển sinh 10" />
           <SidebarItem id="attendance" icon={CalendarCheck} label="Điểm danh" />
           <SidebarItem id="tasks" icon={CheckSquare} label="Bài tập" />
           <SidebarItem id="funds" icon={Wallet} label="Quỹ lớp" />
           <SidebarItem id="seating" icon={Presentation} label="Sơ đồ lớp" />
           <SidebarItem id="stats" icon={BarChart3} label="Thống kê" />
-          <SidebarItem id="ai" icon={MessageSquare} label="AI Tutor" />
+          <SidebarItem id="ai" icon={MessageSquare} label="AI Tutor" teacherOnly />
         </nav>
 
         <div className="p-3 border-t border-slate-100">
-          <SidebarItem id="settings" icon={Settings} label="Cài đặt" />
+          <SidebarItem id="settings" icon={Settings} label="Cài đặt" teacherOnly />
+          <button
+            onClick={handleLogout}
+            className="mt-2 flex items-center gap-3 w-full px-4 py-3 rounded-xl text-red-500 hover:bg-red-50 transition-all duration-200"
+          >
+            <LogOut size={20} />
+            <span className={cn("font-medium", !isSidebarOpen && "hidden")}>Đăng xuất</span>
+          </button>
           <button
             onClick={() => setIsSidebarOpen(!isSidebarOpen)}
             className="mt-2 flex items-center justify-center w-full p-2 text-slate-400 hover:text-slate-600 transition-colors"
@@ -731,24 +844,32 @@ export default function App() {
           </div>
 
           <div className="flex items-center gap-3">
-            <button
-              onClick={() => {
-                setShowApiModal(true);
-                setActiveTab('settings');
-              }}
-              className="flex flex-col items-center justify-center px-4 py-1.5 border border-red-200 bg-red-50 hover:bg-red-100 rounded-xl transition-colors shrink-0"
-            >
-              <div className="flex items-center gap-2 text-red-700 text-sm font-bold">
-                <Key size={14} />
-                Settings (API Key)
-              </div>
-              <span className="text-xs text-red-500 mt-0.5">Lấy API key để sử dụng app</span>
-            </button>
-            <button onClick={exportToExcel} className="p-2 text-slate-600 hover:bg-slate-100 rounded-lg transition-colors shrink-0">
-              <Download size={20} />
-            </button>
-            <div className="w-8 h-8 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center font-bold shrink-0">
-              GV
+            {isTeacher && (
+              <button
+                onClick={() => {
+                  setShowApiModal(true);
+                  setActiveTab('settings');
+                }}
+                className="flex flex-col items-center justify-center px-4 py-1.5 border border-red-200 bg-red-50 hover:bg-red-100 rounded-xl transition-colors shrink-0"
+              >
+                <div className="flex items-center gap-2 text-red-700 text-sm font-bold">
+                  <Key size={14} />
+                  Settings (API Key)
+                </div>
+                <span className="text-xs text-red-500 mt-0.5">Lấy API key để sử dụng app</span>
+              </button>
+            )}
+            {isTeacher && (
+              <button onClick={exportToExcel} className="p-2 text-slate-600 hover:bg-slate-100 rounded-lg transition-colors shrink-0">
+                <Download size={20} />
+              </button>
+            )}
+            <div className={cn(
+              "flex items-center gap-2 px-3 py-1.5 rounded-xl text-sm font-bold shrink-0",
+              isTeacher ? "bg-blue-100 text-blue-700" : "bg-green-100 text-green-700"
+            )}>
+              {isTeacher ? <Shield size={16} /> : <Eye size={16} />}
+              {isTeacher ? 'Giáo viên' : 'Học sinh'}
             </div>
           </div>
         </header>
@@ -899,66 +1020,68 @@ export default function App() {
               >
                 <div className="flex justify-between items-center">
                   <h2 className="text-2xl font-bold">Danh sách học sinh</h2>
-                  <div className="flex gap-3">
-                    <button
-                      onClick={downloadStudentTemplate}
-                      className="flex items-center gap-2 px-4 py-2 border border-emerald-200 text-emerald-700 bg-emerald-50 rounded-xl hover:bg-emerald-100 transition-colors font-medium shadow-sm"
-                      title="Tải file Excel mẫu danh sách học sinh"
-                    >
-                      <FileSpreadsheet size={20} />
-                      Tải file mẫu
-                    </button>
-                    <label className="flex items-center gap-2 px-4 py-2 border border-slate-200 text-slate-700 bg-white rounded-xl hover:bg-slate-50 transition-colors cursor-pointer font-medium shadow-sm">
-                      <Upload size={20} />
-                      Nhập từ Excel
-                      <input
-                        type="file"
-                        accept=".xlsx, .xls"
-                        className="hidden"
-                        onChange={importFromExcel}
-                      />
-                    </label>
-                    <button
-                      onClick={() => {
-                        Swal.fire({
-                          title: 'Thêm học sinh mới',
-                          html: `
-                            <input id="swal-student-name" class="swal2-input" placeholder="Họ tên (VD: Nguyễn Văn F)">
-                            <input id="swal-student-class" class="swal2-input" placeholder="Lớp (VD: 9A1)">
-                          `,
-                          focusConfirm: false,
-                          showCancelButton: true,
-                          confirmButtonText: 'Thêm',
-                          cancelButtonText: 'Hủy',
-                          preConfirm: () => {
-                            const name = (document.getElementById('swal-student-name') as HTMLInputElement).value.trim();
-                            const cls = (document.getElementById('swal-student-class') as HTMLInputElement).value.trim();
-                            if (!name || !cls) {
-                              Swal.showValidationMessage('Vui lòng nhập đầy đủ họ tên và lớp');
-                              return;
+                  {isTeacher && (
+                    <div className="flex gap-3">
+                      <button
+                        onClick={downloadStudentTemplate}
+                        className="flex items-center gap-2 px-4 py-2 border border-emerald-200 text-emerald-700 bg-emerald-50 rounded-xl hover:bg-emerald-100 transition-colors font-medium shadow-sm"
+                        title="Tải file Excel mẫu danh sách học sinh"
+                      >
+                        <FileSpreadsheet size={20} />
+                        Tải file mẫu
+                      </button>
+                      <label className="flex items-center gap-2 px-4 py-2 border border-slate-200 text-slate-700 bg-white rounded-xl hover:bg-slate-50 transition-colors cursor-pointer font-medium shadow-sm">
+                        <Upload size={20} />
+                        Nhập từ Excel
+                        <input
+                          type="file"
+                          accept=".xlsx, .xls"
+                          className="hidden"
+                          onChange={importFromExcel}
+                        />
+                      </label>
+                      <button
+                        onClick={() => {
+                          Swal.fire({
+                            title: 'Thêm học sinh mới',
+                            html: `
+                              <input id="swal-student-name" class="swal2-input" placeholder="Họ tên (VD: Nguyễn Văn F)">
+                              <input id="swal-student-class" class="swal2-input" placeholder="Lớp (VD: 9A1)">
+                            `,
+                            focusConfirm: false,
+                            showCancelButton: true,
+                            confirmButtonText: 'Thêm',
+                            cancelButtonText: 'Hủy',
+                            preConfirm: () => {
+                              const name = (document.getElementById('swal-student-name') as HTMLInputElement).value.trim();
+                              const cls = (document.getElementById('swal-student-class') as HTMLInputElement).value.trim();
+                              if (!name || !cls) {
+                                Swal.showValidationMessage('Vui lòng nhập đầy đủ họ tên và lớp');
+                                return;
+                              }
+                              return { name, class: cls };
                             }
-                            return { name, class: cls };
-                          }
-                        }).then((result) => {
-                          if (result.isConfirmed && result.value) {
-                            setData(prev => ({
-                              ...prev,
-                              students: [...prev.students, {
-                                id: Math.random().toString(36).substr(2, 9),
-                                name: result.value.name,
-                                class: result.value.class
-                              }]
-                            }));
-                            Swal.fire({ title: 'Đã thêm!', icon: 'success', timer: 1500, showConfirmButton: false, toast: true, position: 'top-end' });
-                          }
-                        });
-                      }}
-                      className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors shadow-lg shadow-blue-200"
-                    >
-                      <Plus size={20} />
-                      Thêm học sinh
-                    </button>
-                  </div>
+                          }).then((result) => {
+                            if (result.isConfirmed && result.value) {
+                              setData(prev => ({
+                                ...prev,
+                                students: [...prev.students, {
+                                  id: Math.random().toString(36).substr(2, 9),
+                                  name: result.value.name,
+                                  class: result.value.class
+                                }]
+                              }));
+                              Swal.fire({ title: 'Đã thêm!', icon: 'success', timer: 1500, showConfirmButton: false, toast: true, position: 'top-end' });
+                            }
+                          });
+                        }}
+                        className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors shadow-lg shadow-blue-200"
+                      >
+                        <Plus size={20} />
+                        Thêm học sinh
+                      </button>
+                    </div>
+                  )}
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
@@ -970,30 +1093,42 @@ export default function App() {
                       <div key={student.id} className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition-all group">
                         <div className="flex items-start justify-between mb-4">
                           <div className="flex items-center gap-4">
-                            <label className="relative block w-14 h-14 rounded-2xl bg-slate-100 overflow-hidden shrink-0 border border-slate-200 shadow-sm cursor-pointer group">
-                              <img
-                                src={student.avatar || `https://api.dicebear.com/7.x/notionists/svg?seed=${encodeURIComponent(student.name)}&backgroundColor=f8fafc`}
-                                alt={student.name}
-                                className="w-full h-full object-cover mix-blend-multiply transition-all group-hover:blur-[2px]"
-                              />
-                              <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 bg-black/30 text-white text-[10px] font-bold transition-opacity">
-                                Đổi ảnh
+                            {isTeacher ? (
+                              <label className="relative block w-14 h-14 rounded-2xl bg-slate-100 overflow-hidden shrink-0 border border-slate-200 shadow-sm cursor-pointer group">
+                                <img
+                                  src={student.avatar || `https://api.dicebear.com/7.x/notionists/svg?seed=${encodeURIComponent(student.name)}&backgroundColor=f8fafc`}
+                                  alt={student.name}
+                                  className="w-full h-full object-cover mix-blend-multiply transition-all group-hover:blur-[2px]"
+                                />
+                                <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 bg-black/30 text-white text-[10px] font-bold transition-opacity">
+                                  Đổi ảnh
+                                </div>
+                                <input
+                                  type="file"
+                                  accept="image/*"
+                                  className="hidden"
+                                  onChange={(e) => handleUpdateAvatar(student.id, e)}
+                                />
+                              </label>
+                            ) : (
+                              <div className="relative block w-14 h-14 rounded-2xl bg-slate-100 overflow-hidden shrink-0 border border-slate-200 shadow-sm">
+                                <img
+                                  src={student.avatar || `https://api.dicebear.com/7.x/notionists/svg?seed=${encodeURIComponent(student.name)}&backgroundColor=f8fafc`}
+                                  alt={student.name}
+                                  className="w-full h-full object-cover mix-blend-multiply"
+                                />
                               </div>
-                              <input
-                                type="file"
-                                accept="image/*"
-                                className="hidden"
-                                onChange={(e) => handleUpdateAvatar(student.id, e)}
-                              />
-                            </label>
+                            )}
                             <div>
                               <h4 className="font-bold text-lg group-hover:text-blue-600 transition-colors">{student.name}</h4>
                               <p className="text-slate-500 text-sm">Lớp {student.class}</p>
                             </div>
                           </div>
-                          <button className="p-2 text-slate-400 hover:text-slate-600 rounded-lg">
-                            <MoreVertical size={20} />
-                          </button>
+                          {isTeacher && (
+                            <button className="p-2 text-slate-400 hover:text-slate-600 rounded-lg">
+                              <MoreVertical size={20} />
+                            </button>
+                          )}
                         </div>
 
                         <div className="grid grid-cols-2 gap-4 mb-6">
@@ -1008,13 +1143,15 @@ export default function App() {
                         </div>
 
                         <div className="flex gap-2">
-                          <button
-                            onClick={() => generateAIReport(student.id)}
-                            className="flex-1 py-2 bg-slate-900 text-white rounded-lg text-sm font-medium hover:bg-slate-800 transition-colors flex items-center justify-center gap-2"
-                          >
-                            <MessageSquare size={16} />
-                            AI Report
-                          </button>
+                          {isTeacher && (
+                            <button
+                              onClick={() => generateAIReport(student.id)}
+                              className="flex-1 py-2 bg-slate-900 text-white rounded-lg text-sm font-medium hover:bg-slate-800 transition-colors flex items-center justify-center gap-2"
+                            >
+                              <MessageSquare size={16} />
+                              AI Report
+                            </button>
+                          )}
                           <button
                             onClick={() => setReportStudent(student)}
                             className="p-2 border border-slate-200 text-slate-600 rounded-lg hover:bg-slate-50 transition-colors"
@@ -1022,15 +1159,17 @@ export default function App() {
                           >
                             <Printer size={20} />
                           </button>
-                          <button
-                            onClick={() => {
-                              setTargetStudentId(student.id);
-                              setActiveTab('behavior');
-                            }}
-                            className="px-4 py-2 border border-slate-200 text-slate-600 rounded-lg text-sm font-medium hover:bg-slate-50 transition-colors"
-                          >
-                            Ghi nề nếp
-                          </button>
+                          {isTeacher && (
+                            <button
+                              onClick={() => {
+                                setTargetStudentId(student.id);
+                                setActiveTab('behavior');
+                              }}
+                              className="px-4 py-2 border border-slate-200 text-slate-600 rounded-lg text-sm font-medium hover:bg-slate-50 transition-colors"
+                            >
+                              Ghi nề nếp
+                            </button>
+                          )}
                         </div>
                       </div>
                     );
@@ -1291,6 +1430,27 @@ export default function App() {
 
                   <section className="space-y-4 pt-8 border-t border-slate-100">
                     <h3 className="text-lg font-bold flex items-center gap-2">
+                      <Lock size={20} className="text-blue-600" />
+                      Mật khẩu Giáo viên
+                    </h3>
+                    <div>
+                      <label className="block text-sm font-medium text-slate-600 mb-1">Mật khẩu hiện tại</label>
+                      <div className="relative">
+                        <input
+                          type="password"
+                          value={data.settings.teacherPassword || '1234'}
+                          onChange={(e) => setData(prev => ({ ...prev, settings: { ...prev.settings, teacherPassword: e.target.value } }))}
+                          placeholder="Nhập mật khẩu mới..."
+                          className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 pr-12"
+                        />
+                        <Lock className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                      </div>
+                      <p className="text-xs text-slate-400 mt-2">Mật khẩu này dùng để đăng nhập vai trò Giáo viên. Mặc định: 1234</p>
+                    </div>
+                  </section>
+
+                  <section className="space-y-4 pt-8 border-t border-slate-100">
+                    <h3 className="text-lg font-bold flex items-center gap-2">
                       <Save size={20} className="text-blue-600" />
                       Dữ liệu & Bảo mật
                     </h3>
@@ -1371,26 +1531,28 @@ export default function App() {
               >
                 <div className="flex justify-between items-center">
                   <h2 className="text-2xl font-bold">Quản lý điểm số</h2>
-                  <div className="flex gap-3">
-                    <button
-                      onClick={downloadGradeTemplate}
-                      className="flex items-center gap-2 px-4 py-2 border border-emerald-200 text-emerald-700 bg-emerald-50 rounded-xl hover:bg-emerald-100 transition-colors font-medium shadow-sm"
-                      title="Tải file Excel mẫu nhập điểm"
-                    >
-                      <FileSpreadsheet size={18} />
-                      Tải file mẫu
-                    </button>
-                    <label className="flex items-center gap-2 px-4 py-2 bg-slate-900 text-white rounded-xl font-medium hover:bg-slate-800 transition-colors cursor-pointer shadow-lg">
-                      <Upload size={18} />
-                      Nhập điểm nhanh
-                      <input
-                        type="file"
-                        accept=".xlsx, .xls"
-                        className="hidden"
-                        onChange={importGradesFromExcel}
-                      />
-                    </label>
-                  </div>
+                  {isTeacher && (
+                    <div className="flex gap-3">
+                      <button
+                        onClick={downloadGradeTemplate}
+                        className="flex items-center gap-2 px-4 py-2 border border-emerald-200 text-emerald-700 bg-emerald-50 rounded-xl hover:bg-emerald-100 transition-colors font-medium shadow-sm"
+                        title="Tải file Excel mẫu nhập điểm"
+                      >
+                        <FileSpreadsheet size={18} />
+                        Tải file mẫu
+                      </button>
+                      <label className="flex items-center gap-2 px-4 py-2 bg-slate-900 text-white rounded-xl font-medium hover:bg-slate-800 transition-colors cursor-pointer shadow-lg">
+                        <Upload size={18} />
+                        Nhập điểm nhanh
+                        <input
+                          type="file"
+                          accept=".xlsx, .xls"
+                          className="hidden"
+                          onChange={importGradesFromExcel}
+                        />
+                      </label>
+                    </div>
+                  )}
                 </div>
 
                 <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
@@ -1425,31 +1587,44 @@ export default function App() {
                               }
                               return (
                                 <td key={subject.id} className="p-4 text-center">
-                                  <button
-                                    onClick={() => {
-                                      Swal.fire({
-                                        title: `Nhập điểm ${subject.name}`,
-                                        text: `Học sinh: ${student.name}`,
-                                        input: 'number',
-                                        inputAttributes: { min: '0', max: '10', step: '0.1' },
-                                        showCancelButton: true,
-                                        confirmButtonText: 'Lưu',
-                                        cancelButtonText: 'Hủy'
-                                      }).then((result) => {
-                                        if (result.isConfirmed && result.value) {
-                                          addGrade(student.id, subject.id, 'regular', parseFloat(result.value));
-                                        }
-                                      });
-                                    }}
-                                    className={cn(
-                                      "w-10 h-10 rounded-lg flex items-center justify-center mx-auto font-bold transition-all",
-                                      avg === null ? "bg-slate-100 text-slate-400 hover:bg-blue-100 hover:text-blue-600" :
-                                        avg >= 8 ? "bg-green-100 text-green-700" :
-                                          avg >= 5 ? "bg-blue-100 text-blue-700" : "bg-red-100 text-red-700"
-                                    )}
-                                  >
-                                    {avg !== null ? avg.toFixed(1) : '+'}
-                                  </button>
+                                  {isTeacher ? (
+                                    <button
+                                      onClick={() => {
+                                        Swal.fire({
+                                          title: `Nhập điểm ${subject.name}`,
+                                          text: `Học sinh: ${student.name}`,
+                                          input: 'number',
+                                          inputAttributes: { min: '0', max: '10', step: '0.1' },
+                                          showCancelButton: true,
+                                          confirmButtonText: 'Lưu',
+                                          cancelButtonText: 'Hủy'
+                                        }).then((result) => {
+                                          if (result.isConfirmed && result.value) {
+                                            addGrade(student.id, subject.id, 'regular', parseFloat(result.value));
+                                          }
+                                        });
+                                      }}
+                                      className={cn(
+                                        "w-10 h-10 rounded-lg flex items-center justify-center mx-auto font-bold transition-all",
+                                        avg === null ? "bg-slate-100 text-slate-400 hover:bg-blue-100 hover:text-blue-600" :
+                                          avg >= 8 ? "bg-green-100 text-green-700" :
+                                            avg >= 5 ? "bg-blue-100 text-blue-700" : "bg-red-100 text-red-700"
+                                      )}
+                                    >
+                                      {avg !== null ? avg.toFixed(1) : '+'}
+                                    </button>
+                                  ) : (
+                                    <div
+                                      className={cn(
+                                        "w-10 h-10 rounded-lg flex items-center justify-center mx-auto font-bold",
+                                        avg === null ? "bg-slate-100 text-slate-400" :
+                                          avg >= 8 ? "bg-green-100 text-green-700" :
+                                            avg >= 5 ? "bg-blue-100 text-blue-700" : "bg-red-100 text-red-700"
+                                      )}
+                                    >
+                                      {avg !== null ? avg.toFixed(1) : '-'}
+                                    </div>
+                                  )}
                                 </td>
                               );
                             })}
@@ -1637,42 +1812,44 @@ export default function App() {
                           Chưa có nguyện vọng nào được đăng ký.
                         </div>
                       )}
-                      <button
-                        onClick={() => {
-                          Swal.fire({
-                            title: 'Thêm Nguyện Vọng',
-                            html: `
-                                <input id="swal-ts-name" class="swal2-input" placeholder="Tên trường THPT (VD: Nguyễn Thượng Hiền)">
-                                <input id="swal-ts-score" type="number" step="0.25" class="swal2-input" placeholder="Điểm chuẩn dự kiến">
-                              `,
-                            focusConfirm: false,
-                            showCancelButton: true,
-                            confirmButtonText: 'Lưu',
-                            preConfirm: () => {
-                              const name = (document.getElementById('swal-ts-name') as HTMLInputElement).value;
-                              const score = parseFloat((document.getElementById('swal-ts-score') as HTMLInputElement).value);
-                              if (!name || isNaN(score)) {
-                                Swal.showValidationMessage('Vui lòng nhập đầy đủ thông tin hợp lệ');
+                      {isTeacher && (
+                        <button
+                          onClick={() => {
+                            Swal.fire({
+                              title: 'Thêm Nguyện Vọng',
+                              html: `
+                                  <input id="swal-ts-name" class="swal2-input" placeholder="Tên trường THPT (VD: Nguyễn Thượng Hiền)">
+                                  <input id="swal-ts-score" type="number" step="0.25" class="swal2-input" placeholder="Điểm chuẩn dự kiến">
+                                `,
+                              focusConfirm: false,
+                              showCancelButton: true,
+                              confirmButtonText: 'Lưu',
+                              preConfirm: () => {
+                                const name = (document.getElementById('swal-ts-name') as HTMLInputElement).value;
+                                const score = parseFloat((document.getElementById('swal-ts-score') as HTMLInputElement).value);
+                                if (!name || isNaN(score)) {
+                                  Swal.showValidationMessage('Vui lòng nhập đầy đủ thông tin hợp lệ');
+                                }
+                                return { name, targetScore: score };
                               }
-                              return { name, targetScore: score };
-                            }
-                          }).then((result) => {
-                            if (result.isConfirmed) {
-                              const newSchool = { id: Math.random().toString(), ...result.value };
-                              setData((prev: any) => ({
-                                ...prev,
-                                students: prev.students.map((s: any) => s.id === admissionStudent.id ? {
-                                  ...s,
-                                  targetSchools: [...(s.targetSchools || []), newSchool]
-                                } : s)
-                              }));
-                            }
-                          });
-                        }}
-                        className="w-full p-3 border-2 border-dashed border-slate-200 text-slate-500 font-bold rounded-xl hover:bg-slate-50 hover:border-slate-300 transition-colors flex items-center justify-center gap-2 mt-auto"
-                      >
-                        <Plus size={18} /> Thêm trường nguyện vọng
-                      </button>
+                            }).then((result) => {
+                              if (result.isConfirmed) {
+                                const newSchool = { id: Math.random().toString(), ...result.value };
+                                setData((prev: any) => ({
+                                  ...prev,
+                                  students: prev.students.map((s: any) => s.id === admissionStudent.id ? {
+                                    ...s,
+                                    targetSchools: [...(s.targetSchools || []), newSchool]
+                                  } : s)
+                                }));
+                              }
+                            });
+                          }}
+                          className="w-full p-3 border-2 border-dashed border-slate-200 text-slate-500 font-bold rounded-xl hover:bg-slate-50 hover:border-slate-300 transition-colors flex items-center justify-center gap-2 mt-auto"
+                        >
+                          <Plus size={18} /> Thêm trường nguyện vọng
+                        </button>
+                      )}
                     </div>
                   </div>
 
@@ -1680,46 +1857,48 @@ export default function App() {
                   <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col">
                     <div className="p-6 border-b border-slate-100 flex justify-between items-center">
                       <h3 className="text-lg font-bold flex items-center gap-2"><BookOpen className="text-blue-500" /> Kết quả thi thử</h3>
-                      <button
-                        onClick={() => {
-                          Swal.fire({
-                            title: 'Nhập điểm thi thử',
-                            html: `
-                                <input id="swal-mock-date" type="text" class="swal2-input" placeholder="Tên/Ngày thi (VD: Lần 1 - 15/04)">
-                                <input id="swal-mock-math" type="number" step="0.25" class="swal2-input" placeholder="Điểm Toán">
-                                <input id="swal-mock-lit" type="number" step="0.25" class="swal2-input" placeholder="Điểm Ngữ Văn">
-                                <input id="swal-mock-eng" type="number" step="0.25" class="swal2-input" placeholder="Điểm Tiếng Anh">
-                                <input id="swal-mock-prio" type="number" step="0.25" class="swal2-input" placeholder="Điểm Ưu Tiên (Nếu có)">
-                              `,
-                            focusConfirm: false,
-                            showCancelButton: true,
-                            confirmButtonText: 'Lưu',
-                            preConfirm: () => {
-                              const date = (document.getElementById('swal-mock-date') as HTMLInputElement).value;
-                              const math = parseFloat((document.getElementById('swal-mock-math') as HTMLInputElement).value);
-                              const lit = parseFloat((document.getElementById('swal-mock-lit') as HTMLInputElement).value);
-                              const eng = parseFloat((document.getElementById('swal-mock-eng') as HTMLInputElement).value);
-                              const prio = parseFloat((document.getElementById('swal-mock-prio') as HTMLInputElement).value) || 0;
-                              if (!date || isNaN(math) || isNaN(lit) || isNaN(eng)) {
-                                Swal.showValidationMessage('Vui lòng nhập đủ tên kì thi và điểm 3 môn');
+                      {isTeacher && (
+                        <button
+                          onClick={() => {
+                            Swal.fire({
+                              title: 'Nhập điểm thi thử',
+                              html: `
+                                  <input id="swal-mock-date" type="text" class="swal2-input" placeholder="Tên/Ngày thi (VD: Lần 1 - 15/04)">
+                                  <input id="swal-mock-math" type="number" step="0.25" class="swal2-input" placeholder="Điểm Toán">
+                                  <input id="swal-mock-lit" type="number" step="0.25" class="swal2-input" placeholder="Điểm Ngữ Văn">
+                                  <input id="swal-mock-eng" type="number" step="0.25" class="swal2-input" placeholder="Điểm Tiếng Anh">
+                                  <input id="swal-mock-prio" type="number" step="0.25" class="swal2-input" placeholder="Điểm Ưu Tiên (Nếu có)">
+                                `,
+                              focusConfirm: false,
+                              showCancelButton: true,
+                              confirmButtonText: 'Lưu',
+                              preConfirm: () => {
+                                const date = (document.getElementById('swal-mock-date') as HTMLInputElement).value;
+                                const math = parseFloat((document.getElementById('swal-mock-math') as HTMLInputElement).value);
+                                const lit = parseFloat((document.getElementById('swal-mock-lit') as HTMLInputElement).value);
+                                const eng = parseFloat((document.getElementById('swal-mock-eng') as HTMLInputElement).value);
+                                const prio = parseFloat((document.getElementById('swal-mock-prio') as HTMLInputElement).value) || 0;
+                                if (!date || isNaN(math) || isNaN(lit) || isNaN(eng)) {
+                                  Swal.showValidationMessage('Vui lòng nhập đủ tên kì thi và điểm 3 môn');
+                                }
+                                return { date, math, literature: lit, english: eng, priority: prio };
                               }
-                              return { date, math, literature: lit, english: eng, priority: prio };
-                            }
-                          }).then((result) => {
-                            if (result.isConfirmed) {
-                              const newMock = { id: Math.random().toString(), ...result.value };
-                              setData((prev: any) => ({
-                                ...prev,
-                                students: prev.students.map((s: any) => s.id === admissionStudent.id ? {
-                                  ...s,
-                                  mockExams: [...(s.mockExams || []), newMock]
-                                } : s)
-                              }));
-                            }
-                          });
-                        }}
-                        className="text-sm font-bold text-blue-600 bg-blue-50 px-3 py-1.5 rounded-lg hover:bg-blue-100 transition-colors"
-                      >+ Thêm điểm mới</button>
+                            }).then((result) => {
+                              if (result.isConfirmed) {
+                                const newMock = { id: Math.random().toString(), ...result.value };
+                                setData((prev: any) => ({
+                                  ...prev,
+                                  students: prev.students.map((s: any) => s.id === admissionStudent.id ? {
+                                    ...s,
+                                    mockExams: [...(s.mockExams || []), newMock]
+                                  } : s)
+                                }));
+                              }
+                            });
+                          }}
+                          className="text-sm font-bold text-blue-600 bg-blue-50 px-3 py-1.5 rounded-lg hover:bg-blue-100 transition-colors"
+                        >+ Thêm điểm mới</button>
+                      )}
                     </div>
                     <div className="p-6 flex-1 overflow-y-auto max-h-[500px] space-y-4">
                       {admissionStudent.mockExams?.map((exam: any) => {
@@ -1793,23 +1972,25 @@ export default function App() {
                       <h3 className="text-xl font-bold flex items-center gap-2"><Award className="text-purple-600" /> Điểm chuẩn năm 2025 & Gợi ý trường học</h3>
                       <p className="text-sm text-slate-500 mt-1">Dựa trên điểm trung bình: Toán, Ngữ Văn, Tiếng Anh từ mục Điểm số (Quy chuẩn hệ số 1)</p>
                     </div>
-                    <div className="flex gap-2">
-                      <button
-                        onClick={downloadAdmissionScoresTemplate}
-                        className="text-sm font-medium text-emerald-600 bg-emerald-50 px-3 py-2 rounded-lg hover:bg-emerald-100 transition-colors flex items-center gap-2"
-                      >
-                        <FileSpreadsheet size={16} /> Mẫu Excel
-                      </button>
-                      <label className="text-sm font-medium text-white bg-slate-800 px-3 py-2 rounded-lg hover:bg-slate-700 transition-colors cursor-pointer flex items-center gap-2">
-                        <Upload size={16} /> Tải điểm chuẩn (Excel)
-                        <input
-                          type="file"
-                          accept=".xlsx, .xls"
-                          className="hidden"
-                          onChange={importAdmissionScoresFromExcel}
-                        />
-                      </label>
-                    </div>
+                    {isTeacher && (
+                      <div className="flex gap-2">
+                        <button
+                          onClick={downloadAdmissionScoresTemplate}
+                          className="text-sm font-medium text-emerald-600 bg-emerald-50 px-3 py-2 rounded-lg hover:bg-emerald-100 transition-colors flex items-center gap-2"
+                        >
+                          <FileSpreadsheet size={16} /> Mẫu Excel
+                        </button>
+                        <label className="text-sm font-medium text-white bg-slate-800 px-3 py-2 rounded-lg hover:bg-slate-700 transition-colors cursor-pointer flex items-center gap-2">
+                          <Upload size={16} /> Tải điểm chuẩn (Excel)
+                          <input
+                            type="file"
+                            accept=".xlsx, .xls"
+                            className="hidden"
+                            onChange={importAdmissionScoresFromExcel}
+                          />
+                        </label>
+                      </div>
+                    )}
                   </div>
 
                   <div className="p-6 flex-1 flex flex-col lg:flex-row gap-8">
@@ -1945,10 +2126,10 @@ export default function App() {
           );
             })()}
 
-          {activeTab === 'attendance' && <AttendanceTab data={data} setData={setData} />}
-          {activeTab === 'funds' && <FundsTab data={data} setData={setData} />}
-          {activeTab === 'tasks' && <TasksTab data={data} setData={setData} />}
-          {activeTab === 'seating' && <SeatingTab data={data} setData={setData} />}
+          {activeTab === 'attendance' && <AttendanceTab data={data} setData={setData} userRole={userRole} />}
+          {activeTab === 'funds' && <FundsTab data={data} setData={setData} userRole={userRole} />}
+          {activeTab === 'tasks' && <TasksTab data={data} setData={setData} userRole={userRole} />}
+          {activeTab === 'seating' && <SeatingTab data={data} setData={setData} userRole={userRole} />}
 
         </AnimatePresence>
     </div>
