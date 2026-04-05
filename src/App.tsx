@@ -1723,7 +1723,7 @@ export default function App() {
                     </div>
                     <div className="p-6 flex-1 overflow-y-auto max-h-[500px] space-y-4">
                       {admissionStudent.mockExams?.map((exam: any) => {
-                        const totalBaseScore = (exam.math + exam.literature) * 2 + exam.english + (exam.priority || 0);
+                        const totalBaseScore = exam.math + exam.literature + exam.english + (exam.priority || 0);
                         let statusColor = "bg-slate-100 text-slate-800";
                         let statusText = "Chưa xác định";
 
@@ -1754,15 +1754,15 @@ export default function App() {
                             </div>
                             <div className="grid grid-cols-4 gap-2 mb-4">
                               <div className="bg-slate-50 p-2 rounded-lg text-center">
-                                <p className="text-[10px] text-slate-500 font-bold uppercase">Toán (x2)</p>
+                                <p className="text-[10px] text-slate-500 font-bold uppercase">Toán</p>
                                 <p className="font-bold text-slate-800">{exam.math}</p>
                               </div>
                               <div className="bg-slate-50 p-2 rounded-lg text-center">
-                                <p className="text-[10px] text-slate-500 font-bold uppercase">Ngữ Văn (x2)</p>
+                                <p className="text-[10px] text-slate-500 font-bold uppercase">Ngữ Văn</p>
                                 <p className="font-bold text-slate-800">{exam.literature}</p>
                               </div>
                               <div className="bg-slate-50 p-2 rounded-lg text-center">
-                                <p className="text-[10px] text-slate-500 font-bold uppercase">Anh (x1)</p>
+                                <p className="text-[10px] text-slate-500 font-bold uppercase">Anh</p>
                                 <p className="font-bold text-slate-800">{exam.english}</p>
                               </div>
                               <div className="bg-slate-50 p-2 rounded-lg text-center">
@@ -1825,14 +1825,14 @@ export default function App() {
                         const avgEng = engGrades.length > 0 ? engGrades.reduce((a, b) => a + b.value, 0) / engGrades.length : 0;
 
                         const hasScore = mathGrades.length > 0 || litGrades.length > 0 || engGrades.length > 0;
-                        const estimatedScore = (avgMath + avgLit) * 2 + avgEng;
+                        const estimatedScore = avgMath + avgLit + avgEng;
 
                         return (
                           <>
                             <div className="bg-purple-50 rounded-2xl p-6 border border-purple-100">
                               <h4 className="font-bold text-slate-700 mb-4 flex justify-between items-center">
                                 <span>Điểm xét tuyển dự kiến</span>
-                                <span className="text-xs font-normal text-slate-500">(Toán + Văn) x2 + Anh</span>
+                                <span className="text-xs font-normal text-slate-500">Toán + Văn + Anh</span>
                               </h4>
                               {hasScore ? (
                                 <div className="flex items-center justify-between">
