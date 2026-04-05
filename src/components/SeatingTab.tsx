@@ -7,12 +7,14 @@ import { AppData, Student } from '../types';
 interface Props {
   data: AppData;
   setData: React.Dispatch<React.SetStateAction<AppData>>;
+  userRole: 'teacher' | 'student';
 }
 
 const ROWS = 6;
 const COLS = 8;
 
-export default function SeatingTab({ data, setData }: Props) {
+export default function SeatingTab({ data, setData, userRole }: Props) {
+  const isTeacher = userRole === 'teacher';
   const [selectedClass, setSelectedClass] = useState('All');
   const [draggedStudent, setDraggedStudent] = useState<Student | null>(null);
 
@@ -133,12 +135,16 @@ export default function SeatingTab({ data, setData }: Props) {
           >
             {classes.map(c => <option key={c} value={c}>{c === 'All' ? 'Tất cả lớp' : c}</option>)}
           </select>
-          <button onClick={shuffleSeats} className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-xl hover:bg-purple-700 transition-colors font-medium shadow-lg shadow-purple-200">
-            <Shuffle size={18} /> Xáo trộn
-          </button>
-          <button onClick={resetSeats} className="flex items-center gap-2 px-4 py-2 border border-slate-200 text-slate-600 rounded-xl hover:bg-slate-50 transition-colors font-medium">
-            <RotateCcw size={18} /> Reset
-          </button>
+          {isTeacher && (
+            <>
+              <button onClick={shuffleSeats} className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-xl hover:bg-purple-700 transition-colors font-medium shadow-lg shadow-purple-200">
+                <Shuffle size={18} /> Xáo trộn
+              </button>
+              <button onClick={resetSeats} className="flex items-center gap-2 px-4 py-2 border border-slate-200 text-slate-600 rounded-xl hover:bg-slate-50 transition-colors font-medium">
+                <RotateCcw size={18} /> Reset
+              </button>
+            </>
+          )}
         </div>
       </div>
 
@@ -162,21 +168,23 @@ export default function SeatingTab({ data, setData }: Props) {
               return (
                 <div
                   key={idx}
-                  onDragOver={e => e.preventDefault()}
-                  onDrop={() => handleDrop(row, col)}
-                  className={`aspect-square rounded-xl border-2 border-dashed flex items-center justify-center text-center p-1 transition-all cursor-pointer ${
+                  onDragOver={isTeacher ? (e => e.preventDefault()) : undefined}
+                  onDrop={isTeacher ? (() => handleDrop(row, col)) : undefined}
+                  className={`aspect-square rounded-xl border-2 border-dashed flex items-center justify-center text-center p-1 transition-all ${
+                    isTeacher ? 'cursor-pointer' : ''
+                  } ${
                     student
                       ? 'border-blue-300 bg-blue-50 hover:bg-blue-100'
-                      : 'border-slate-200 hover:border-blue-400 hover:bg-blue-50/50'
+                      : 'border-slate-200'
                   }`}
                 >
                   {student ? (
                     <div
-                      draggable
-                      onDragStart={() => handleDragStart(student)}
-                      onDoubleClick={() => removeSeat(student.id)}
-                      className="text-[10px] font-bold text-blue-800 leading-tight cursor-grab active:cursor-grabbing select-none"
-                      title={`${student.name} - Double click để gỡ`}
+                      draggable={isTeacher}
+                      onDragStart={isTeacher ? (() => handleDragStart(student)) : undefined}
+                      onDoubleClick={isTeacher ? (() => removeSeat(student.id)) : undefined}
+                      className={`text-[10px] font-bold text-blue-800 leading-tight select-none ${isTeacher ? 'cursor-grab active:cursor-grabbing' : ''}`}
+                      title={isTeacher ? `${student.name} - Double click để gỡ` : student.name}
                     >
                       {student.name.split(' ').slice(-2).join(' ')}
                     </div>
@@ -199,9 +207,9 @@ export default function SeatingTab({ data, setData }: Props) {
               unseatedStudents.map(student => (
                 <div
                   key={student.id}
-                  draggable
-                  onDragStart={() => handleDragStart(student)}
-                  className="bg-slate-50 p-3 rounded-xl border border-slate-200 cursor-grab active:cursor-grabbing hover:bg-blue-50 hover:border-blue-200 transition-all"
+                  draggable={isTeacher}
+                  onDragStart={isTeacher ? (() => handleDragStart(student)) : undefined}
+                  className={`bg-slate-50 p-3 rounded-xl border border-slate-200 transition-all ${isTeacher ? 'cursor-grab active:cursor-grabbing hover:bg-blue-50 hover:border-blue-200' : ''}`}
                 >
                   <p className="font-medium text-sm text-slate-800">{student.name}</p>
                   <p className="text-xs text-slate-400">{student.class}</p>
@@ -209,7 +217,7 @@ export default function SeatingTab({ data, setData }: Props) {
               ))
             )}
           </div>
-          <p className="text-xs text-slate-400 mt-4 italic">Kéo thả HS vào ô trên bản đồ. Double-click để gỡ.</p>
+          {isTeacher && <p className="text-xs text-slate-400 mt-4 italic">Kéo thả HS vào ô trên bản đồ. Double-click để gỡ.</p>}
         </div>
       </div>
     </motion.div>
