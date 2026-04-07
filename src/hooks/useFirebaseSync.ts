@@ -5,14 +5,23 @@
  * HS mode: lắng nghe Firebase → tự động cập nhật state
  */
 
-import React, { useState, useEffect, useRef, useCallback } from 'react';
-import {
-  syncDataToFirebase,
-  listenToRoomData,
-  listenToConnectionStatus,
-  isFirebaseConfigured
-} from '../lib/firebase';
+import React, { useState, useEffect, useRef } from 'react';
 import type { AppData } from '../types';
+
+// Dynamic imports to prevent crash on load
+let firebaseModule: typeof import('../lib/firebase') | null = null;
+
+async function getFirebaseModule() {
+  if (!firebaseModule) {
+    try {
+      firebaseModule = await import('../lib/firebase');
+    } catch (e) {
+      console.error('Failed to load Firebase module:', e);
+      return null;
+    }
+  }
+  return firebaseModule;
+}
 
 interface UseFirebaseSyncOptions {
   roomCode: string | null;
@@ -46,64 +55,83 @@ export function useFirebaseSync({
 
   // --- Lắng nghe trạng thái kết nối ---
   useEffect(() => {
-    if (!roomCode || !isFirebaseConfigured()) return;
+    if (!roomCode || !userRole) return;
 
-    const unsubscribe = listenToConnectionStatus((connected) => {
-      setIsConnected(connected);
-      if (connected) {
-        setSyncError(null);
+    let cleanup: (() => void) | undefined;
+    
+    (async () => {
+      try {
+        const fb = await getFirebaseModule();
+        if (!fb || !fb.isFirebaseConfigured()) return;
+
+        cleanup = fb.listenToConnectionStatus((connected) => {
+          setIsConnected(connected);
+          if (connected) setSyncError(null);
+        });
+      } catch (e) {
+        console.error('Connection listener error:', e);
       }
-    });
+    })();
 
-    return unsubscribe;
-  }, [roomCode]);
+    return () => { if (cleanup) cleanup(); };
+  }, [roomCode, userRole]);
 
   // --- HS: Lắng nghe dữ liệu real-time từ Firebase ---
   useEffect(() => {
-    if (!roomCode || userRole !== 'student' || !isFirebaseConfigured()) return;
+    if (!roomCode || userRole !== 'student') return;
 
-    const unsubscribe = listenToRoomData(roomCode, (firebaseData) => {
-      if (firebaseData) {
-        isReceivingRef.current = true;
-        
-        // Khôi phục apiKey từ localStorage (không sync lên cloud)
-        const localApiKey = (() => {
-          try {
-            const saved = localStorage.getItem('edumanage_data');
-            if (saved) return JSON.parse(saved).settings?.apiKey || '';
-          } catch { /* ignore */ }
-          return '';
-        })();
+    let cleanup: (() => void) | undefined;
 
-        const mergedData: AppData = {
-          ...firebaseData,
-          settings: {
-            ...firebaseData.settings,
-            apiKey: localApiKey
+    (async () => {
+      try {
+        const fb = await getFirebaseModule();
+        if (!fb || !fb.isFirebaseConfigured()) return;
+
+        cleanup = fb.listenToRoomData(roomCode, (firebaseData) => {
+          if (firebaseData) {
+            isReceivingRef.current = true;
+            
+            // Khôi phục apiKey từ localStorage
+            const localApiKey = (() => {
+              try {
+                const saved = localStorage.getItem('edumanage_data');
+                if (saved) return JSON.parse(saved).settings?.apiKey || '';
+              } catch { /* ignore */ }
+              return '';
+            })();
+
+            const mergedData: AppData = {
+              ...firebaseData,
+              settings: {
+                ...firebaseData.settings,
+                apiKey: localApiKey
+              }
+            };
+
+            setData(mergedData);
+            setLastSyncTime(new Date());
+            
+            setTimeout(() => {
+              isReceivingRef.current = false;
+            }, 100);
           }
-        };
-
-        setData(mergedData);
-        setLastSyncTime(new Date());
-        
-        // Reset flag after state update
-        setTimeout(() => {
-          isReceivingRef.current = false;
-        }, 100);
+        });
+      } catch (e) {
+        console.error('Student listener error:', e);
       }
-    });
+    })();
 
-    return unsubscribe;
+    return () => { if (cleanup) cleanup(); };
   }, [roomCode, userRole, setData]);
 
   // --- GV: Push dữ liệu lên Firebase khi thay đổi (debounced) ---
   useEffect(() => {
-    if (!roomCode || userRole !== 'teacher' || !isFirebaseConfigured()) return;
+    if (!roomCode || userRole !== 'teacher') return;
     
     // Skip nếu đang nhận data từ Firebase (tránh loop)
     if (isReceivingRef.current) return;
 
-    // Skip lần đầu load (đã load từ createRoom/joinRoom)
+    // Skip lần đầu load
     if (isFirstLoadRef.current) {
       isFirstLoadRef.current = false;
       lastDataJsonRef.current = JSON.stringify(data);
@@ -121,9 +149,12 @@ export function useFirebaseSync({
     }
 
     debounceTimerRef.current = setTimeout(async () => {
-      setIsSyncing(true);
       try {
-        await syncDataToFirebase(roomCode, data);
+        const fb = await getFirebaseModule();
+        if (!fb || !fb.isFirebaseConfigured()) return;
+
+        setIsSyncing(true);
+        await fb.syncDataToFirebase(roomCode, data);
         setLastSyncTime(new Date());
         setSyncError(null);
       } catch (error: any) {
@@ -141,41 +172,47 @@ export function useFirebaseSync({
     };
   }, [roomCode, userRole, data]);
 
-  // --- GV: Cũng lắng nghe Firebase để đồng bộ nếu có thay đổi từ bên ngoài ---
+  // --- GV: Lắng nghe Firebase để đồng bộ từ bên ngoài ---
   useEffect(() => {
-    if (!roomCode || userRole !== 'teacher' || !isFirebaseConfigured()) return;
+    if (!roomCode || userRole !== 'teacher') return;
 
-    const unsubscribe = listenToRoomData(roomCode, (firebaseData) => {
-      if (firebaseData) {
-        const firebaseJson = JSON.stringify(firebaseData);
-        // Chỉ cập nhật nếu data từ Firebase khác với data hiện tại
-        // (tránh vòng lặp vô hạn)
-        const currentDataWithoutKey = { ...data, settings: { ...data.settings, apiKey: undefined } };
-        const currentJson = JSON.stringify(currentDataWithoutKey);
-        
-        if (firebaseJson !== currentJson && firebaseJson !== lastDataJsonRef.current) {
-          isReceivingRef.current = true;
+    let cleanup: (() => void) | undefined;
+
+    (async () => {
+      try {
+        const fb = await getFirebaseModule();
+        if (!fb || !fb.isFirebaseConfigured()) return;
+
+        cleanup = fb.listenToRoomData(roomCode, (firebaseData) => {
+          if (!firebaseData) return;
           
-          const localApiKey = data.settings.apiKey;
-          const mergedData: AppData = {
-            ...firebaseData,
-            settings: {
-              ...firebaseData.settings,
-              apiKey: localApiKey
-            }
-          };
-          
-          setData(mergedData);
-          lastDataJsonRef.current = JSON.stringify(mergedData);
-          
-          setTimeout(() => {
-            isReceivingRef.current = false;
-          }, 100);
-        }
+          const firebaseJson = JSON.stringify(firebaseData);
+          if (firebaseJson !== lastDataJsonRef.current) {
+            isReceivingRef.current = true;
+            
+            const localApiKey = data.settings.apiKey;
+            const mergedData: AppData = {
+              ...firebaseData,
+              settings: {
+                ...firebaseData.settings,
+                apiKey: localApiKey
+              }
+            };
+            
+            setData(mergedData);
+            lastDataJsonRef.current = JSON.stringify(mergedData);
+            
+            setTimeout(() => {
+              isReceivingRef.current = false;
+            }, 100);
+          }
+        });
+      } catch (e) {
+        console.error('Teacher listener error:', e);
       }
-    });
+    })();
 
-    return unsubscribe;
+    return () => { if (cleanup) cleanup(); };
   }, [roomCode, userRole]);
 
   return {
