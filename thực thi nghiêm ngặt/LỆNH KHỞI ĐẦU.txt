@@ -1,0 +1,6 @@
+Giúp tôi rà soát app,sửa lỗi, bổ sung tính năng app (nếu có) theo lệnh dưới đây
+Trước khi làm bất cứ điều gì, hãy:
+1. Đọc các skill (trong thư mục .agent/skills/) hoặc thư mục (.claude/)
+2. Khám phá cấu trúc project hiện tại: đọc package.json, src/, các file chính
+3. Làm đúng quy trình BRAINSTORM trong skill 1.md
+4. Khi tôi phê duyệt kế hoạch hoặc bổ sung thêm vào kế hoạch thì mới bắt đầu làm việc.

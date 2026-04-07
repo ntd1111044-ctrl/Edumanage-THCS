@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import {
   LayoutDashboard,
   Users,
@@ -46,7 +46,13 @@ import {
   Lock,
   Eye,
   UserCheck,
-  Shield
+  Shield,
+  Copy,
+  Wifi,
+  WifiOff,
+  Loader2,
+  Hash,
+  RefreshCw
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
@@ -74,6 +80,15 @@ import { Document, Packer, Paragraph, TextRun, HeadingLevel, AlignmentType } fro
 import { cn } from './lib/utils';
 import { Student, Subject, Grade, BehaviorRecord, AppData, INITIAL_DATA } from './types';
 import { callGeminiAI, MODELS } from './lib/gemini';
+import { useFirebaseSync } from './hooks/useFirebaseSync';
+import {
+  isFirebaseConfigured,
+  createRoom,
+  checkRoomExists,
+  verifyTeacherPassword,
+  getRoomData,
+  generateRoomCode
+} from './lib/firebase';
 import AttendanceTab from './components/AttendanceTab';
 import FundsTab from './components/FundsTab';
 import TasksTab from './components/TasksTab';
@@ -133,6 +148,18 @@ export default function App() {
   const [userRole, setUserRole] = useState<'teacher' | 'student' | null>(() => {
     const savedRole = localStorage.getItem('edumanage_role');
     return savedRole === 'teacher' || savedRole === 'student' ? savedRole : null;
+  });
+  const [roomCode, setRoomCode] = useState<string | null>(() => {
+    return localStorage.getItem('edumanage_room_code');
+  });
+  const [isJoiningRoom, setIsJoiningRoom] = useState(false);
+
+  // Firebase real-time sync
+  const { isConnected, isSyncing, lastSyncTime, syncError } = useFirebaseSync({
+    roomCode,
+    userRole,
+    data,
+    setData
   });
 
   const isTeacher = userRole === 'teacher';
@@ -694,10 +721,140 @@ export default function App() {
     localStorage.setItem('edumanage_role', role);
   };
 
+  // --- Firebase Room Handlers ---
+  const handleTeacherCreateRoom = async (password: string) => {
+    if (password !== teacherPassword) {
+      Swal.fire('Sai mật khẩu', 'Mật khẩu giáo viên không đúng.', 'error');
+      return;
+    }
+    
+    if (!isFirebaseConfigured()) {
+      // Fallback: hoạt động offline nếu chưa config Firebase
+      setUserRole('teacher');
+      localStorage.setItem('edumanage_role', 'teacher');
+      Swal.fire('Chế độ offline', 'Firebase chưa được cấu hình. App hoạt động ở chế độ offline (chỉ localStorage).', 'info');
+      return;
+    }
+
+    setIsJoiningRoom(true);
+    try {
+      const code = await createRoom(password, data);
+      setRoomCode(code);
+      localStorage.setItem('edumanage_room_code', code);
+      setUserRole('teacher');
+      localStorage.setItem('edumanage_role', 'teacher');
+      
+      Swal.fire({
+        title: '🎉 Tạo phòng thành công!',
+        html: `<p class="text-lg">Mã phòng của bạn:</p><p class="text-4xl font-black text-blue-600 my-4 tracking-[0.3em]">${code}</p><p class="text-sm text-gray-500">Hãy chia sẻ mã này cho học sinh để các em tham gia lớp học.</p>`,
+        icon: 'success',
+        confirmButtonText: 'Vào lớp học',
+        confirmButtonColor: '#2563eb'
+      });
+    } catch (error: any) {
+      Swal.fire('Lỗi', 'Không thể tạo phòng: ' + error.message, 'error');
+    } finally {
+      setIsJoiningRoom(false);
+    }
+  };
+
+  const handleTeacherJoinRoom = async (password: string, code: string) => {
+    if (!isFirebaseConfigured()) {
+      Swal.fire('Lỗi', 'Firebase chưa được cấu hình.', 'error');
+      return;
+    }
+
+    setIsJoiningRoom(true);
+    try {
+      const exists = await checkRoomExists(code.toUpperCase());
+      if (!exists) {
+        Swal.fire('Lỗi', 'Mã phòng không tồn tại.', 'error');
+        return;
+      }
+
+      const isValid = await verifyTeacherPassword(code.toUpperCase(), password);
+      if (!isValid) {
+        Swal.fire('Sai mật khẩu', 'Mật khẩu GV cho phòng này không đúng.', 'error');
+        return;
+      }
+
+      // Load data từ Firebase
+      const firebaseData = await getRoomData(code.toUpperCase());
+      if (firebaseData) {
+        const localApiKey = data.settings.apiKey;
+        setData({
+          ...INITIAL_DATA,
+          ...firebaseData,
+          settings: { ...firebaseData.settings, apiKey: localApiKey }
+        });
+      }
+
+      setRoomCode(code.toUpperCase());
+      localStorage.setItem('edumanage_room_code', code.toUpperCase());
+      setUserRole('teacher');
+      localStorage.setItem('edumanage_role', 'teacher');
+
+      Swal.fire({ title: 'Đã vào phòng ' + code.toUpperCase(), icon: 'success', timer: 1500, showConfirmButton: false, toast: true, position: 'top-end' });
+    } catch (error: any) {
+      Swal.fire('Lỗi', 'Không thể kết nối: ' + error.message, 'error');
+    } finally {
+      setIsJoiningRoom(false);
+    }
+  };
+
+  const handleStudentJoinRoom = async (code: string) => {
+    if (!isFirebaseConfigured()) {
+      // Fallback offline
+      setUserRole('student');
+      localStorage.setItem('edumanage_role', 'student');
+      Swal.fire('Chế độ offline', 'Firebase chưa cấu hình. Xem dữ liệu offline.', 'info');
+      return;
+    }
+
+    setIsJoiningRoom(true);
+    try {
+      const exists = await checkRoomExists(code.toUpperCase());
+      if (!exists) {
+        Swal.fire('Lỗi', `Không tìm thấy phòng "${code.toUpperCase()}". Kiểm tra lại mã phòng.`, 'error');
+        return;
+      }
+
+      // Load data từ Firebase
+      const firebaseData = await getRoomData(code.toUpperCase());
+      if (firebaseData) {
+        setData(prev => ({
+          ...INITIAL_DATA,
+          ...firebaseData,
+          settings: { ...firebaseData.settings, apiKey: prev.settings.apiKey }
+        }));
+      }
+
+      setRoomCode(code.toUpperCase());
+      localStorage.setItem('edumanage_room_code', code.toUpperCase());
+      setUserRole('student');
+      localStorage.setItem('edumanage_role', 'student');
+
+      Swal.fire({ title: '✅ Đã tham gia lớp học!', text: 'Dữ liệu sẽ tự động cập nhật khi GV thay đổi.', icon: 'success', timer: 2000, showConfirmButton: false, toast: true, position: 'top-end' });
+    } catch (error: any) {
+      Swal.fire('Lỗi', 'Không thể kết nối: ' + error.message, 'error');
+    } finally {
+      setIsJoiningRoom(false);
+    }
+  };
+
   const handleLogout = () => {
     setUserRole(null);
+    setRoomCode(null);
     localStorage.removeItem('edumanage_role');
+    localStorage.removeItem('edumanage_room_code');
     setActiveTab('dashboard');
+  };
+
+  const copyRoomCode = () => {
+    if (roomCode) {
+      navigator.clipboard.writeText(roomCode);
+      Swal.fire({ title: 'Đã copy mã phòng!', text: roomCode, icon: 'success', timer: 1200, showConfirmButton: false, toast: true, position: 'top-end' });
+    }
   };
 
   // --- Login Screen ---
@@ -721,12 +878,20 @@ export default function App() {
             </div>
             <h1 className="text-4xl font-black text-white tracking-tight">EduManage</h1>
             <p className="text-blue-300/70 mt-2 text-lg">Hệ thống quản lý lớp học thông minh</p>
+            {isFirebaseConfigured() && (
+              <div className="mt-3 inline-flex items-center gap-2 px-3 py-1 rounded-full bg-green-500/20 text-green-300 text-xs">
+                <Wifi size={12} />
+                Đồng bộ thời gian thực
+              </div>
+            )}
           </div>
 
           <div className="bg-white/10 backdrop-blur-xl border border-white/20 rounded-3xl p-8 shadow-2xl">
             <h2 className="text-xl font-bold text-white text-center mb-6">Chọn vai trò của bạn</h2>
             <div className="grid grid-cols-2 gap-4 mb-6">
+              {/* --- Nút Giáo viên --- */}
               <button
+                disabled={isJoiningRoom}
                 onClick={() => {
                   Swal.fire({
                     title: 'Đăng nhập Giáo viên',
@@ -734,40 +899,119 @@ export default function App() {
                     inputLabel: 'Nhập mật khẩu GV',
                     inputPlaceholder: 'Mật khẩu...',
                     showCancelButton: true,
-                    confirmButtonText: 'Đăng nhập',
+                    confirmButtonText: 'Tiếp tục',
                     cancelButtonText: 'Hủy',
                     confirmButtonColor: '#2563eb',
                     inputAttributes: { autocapitalize: 'off' },
                   }).then((result) => {
-                    if (result.isConfirmed) {
-                      handleLogin('teacher', result.value);
+                    if (!result.isConfirmed || !result.value) return;
+                    const password = result.value;
+                    
+                    // Kiểm tra mật khẩu trước
+                    if (password !== teacherPassword) {
+                      Swal.fire('Sai mật khẩu', 'Mật khẩu giáo viên không đúng.', 'error');
+                      return;
                     }
+
+                    if (!isFirebaseConfigured()) {
+                      // Offline mode
+                      handleLogin('teacher', password);
+                      return;
+                    }
+
+                    // Chọn tạo mới hay vào phòng cũ
+                    Swal.fire({
+                      title: '🏫 Phòng lớp học',
+                      html: `
+                        <p class="text-sm text-gray-500 mb-4">Chọn hành động:</p>
+                        <div style="display:flex;gap:12px;justify-content:center;">
+                          <button id="swal-create-btn" class="px-5 py-3 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-700 transition-colors" style="min-width:140px">
+                            ✨ Tạo phòng mới
+                          </button>
+                          <button id="swal-join-btn" class="px-5 py-3 bg-white border-2 border-blue-300 text-blue-700 rounded-xl font-bold hover:bg-blue-50 transition-colors" style="min-width:140px">
+                            🔗 Vào phòng cũ
+                          </button>
+                        </div>
+                      `,
+                      showConfirmButton: false,
+                      showCancelButton: true,
+                      cancelButtonText: 'Hủy',
+                      didOpen: () => {
+                        document.getElementById('swal-create-btn')?.addEventListener('click', () => {
+                          Swal.close();
+                          handleTeacherCreateRoom(password);
+                        });
+                        document.getElementById('swal-join-btn')?.addEventListener('click', () => {
+                          Swal.close();
+                          Swal.fire({
+                            title: 'Nhập mã phòng',
+                            input: 'text',
+                            inputLabel: 'Mã phòng 6 ký tự',
+                            inputPlaceholder: 'VD: ABC123',
+                            inputAttributes: { maxlength: '6', autocapitalize: 'characters', style: 'text-transform:uppercase;text-align:center;font-size:1.5rem;letter-spacing:0.3em;font-weight:900' },
+                            showCancelButton: true,
+                            confirmButtonText: 'Vào phòng',
+                            cancelButtonText: 'Hủy',
+                            confirmButtonColor: '#2563eb',
+                            inputValidator: (val) => { if (!val || val.length < 4) return 'Nhập mã phòng hợp lệ'; return null; }
+                          }).then((r) => {
+                            if (r.isConfirmed && r.value) {
+                              handleTeacherJoinRoom(password, r.value);
+                            }
+                          });
+                        });
+                      }
+                    });
                   });
                 }}
-                className="group flex flex-col items-center gap-4 p-6 rounded-2xl border-2 border-blue-400/30 bg-blue-500/10 hover:bg-blue-500/20 hover:border-blue-400/60 transition-all duration-300"
+                className="group flex flex-col items-center gap-4 p-6 rounded-2xl border-2 border-blue-400/30 bg-blue-500/10 hover:bg-blue-500/20 hover:border-blue-400/60 transition-all duration-300 disabled:opacity-50"
               >
                 <div className="w-16 h-16 rounded-2xl bg-blue-500/20 flex items-center justify-center text-blue-400 group-hover:scale-110 transition-transform">
-                  <Shield size={32} />
+                  {isJoiningRoom ? <Loader2 size={32} className="animate-spin" /> : <Shield size={32} />}
                 </div>
                 <div>
                   <p className="font-bold text-white text-lg">Giáo viên</p>
                   <p className="text-blue-300/60 text-xs mt-1">Toàn quyền chỉnh sửa</p>
                 </div>
               </button>
+
+              {/* --- Nút Học sinh --- */}
               <button
-                onClick={() => handleLogin('student')}
-                className="group flex flex-col items-center gap-4 p-6 rounded-2xl border-2 border-green-400/30 bg-green-500/10 hover:bg-green-500/20 hover:border-green-400/60 transition-all duration-300"
+                disabled={isJoiningRoom}
+                onClick={() => {
+                  if (!isFirebaseConfigured()) {
+                    handleLogin('student');
+                    return;
+                  }
+                  Swal.fire({
+                    title: '📚 Tham gia lớp học',
+                    input: 'text',
+                    inputLabel: 'Nhập mã phòng do GV cung cấp',
+                    inputPlaceholder: 'VD: ABC123',
+                    inputAttributes: { maxlength: '6', autocapitalize: 'characters', style: 'text-transform:uppercase;text-align:center;font-size:1.5rem;letter-spacing:0.3em;font-weight:900' },
+                    showCancelButton: true,
+                    confirmButtonText: 'Tham gia',
+                    cancelButtonText: 'Hủy',
+                    confirmButtonColor: '#16a34a',
+                    inputValidator: (val) => { if (!val || val.length < 4) return 'Nhập mã phòng hợp lệ (do GV cung cấp)'; return null; },
+                  }).then((result) => {
+                    if (result.isConfirmed && result.value) {
+                      handleStudentJoinRoom(result.value);
+                    }
+                  });
+                }}
+                className="group flex flex-col items-center gap-4 p-6 rounded-2xl border-2 border-green-400/30 bg-green-500/10 hover:bg-green-500/20 hover:border-green-400/60 transition-all duration-300 disabled:opacity-50"
               >
                 <div className="w-16 h-16 rounded-2xl bg-green-500/20 flex items-center justify-center text-green-400 group-hover:scale-110 transition-transform">
-                  <Eye size={32} />
+                  {isJoiningRoom ? <Loader2 size={32} className="animate-spin" /> : <Eye size={32} />}
                 </div>
                 <div>
                   <p className="font-bold text-white text-lg">Học sinh</p>
-                  <p className="text-green-300/60 text-xs mt-1">Chỉ được xem</p>
+                  <p className="text-green-300/60 text-xs mt-1">Nhập mã phòng để xem</p>
                 </div>
               </button>
             </div>
-            <p className="text-center text-white/30 text-xs">Liên hệ giáo viên chủ nhiệm để lấy mật khẩu</p>
+            <p className="text-center text-white/30 text-xs">Liên hệ giáo viên chủ nhiệm để lấy mật khẩu và mã phòng</p>
           </div>
         </motion.div>
       </div>
@@ -845,6 +1089,37 @@ export default function App() {
           </div>
 
           <div className="flex items-center gap-3">
+            {/* Room Code Badge */}
+            {roomCode && (
+              <button
+                onClick={copyRoomCode}
+                className="flex items-center gap-2 px-3 py-2 bg-indigo-50 border border-indigo-200 rounded-xl hover:bg-indigo-100 transition-colors shrink-0 group"
+                title="Nhấn để copy mã phòng"
+              >
+                <Hash size={14} className="text-indigo-500" />
+                <span className="font-black text-indigo-700 tracking-widest text-sm">{roomCode}</span>
+                <Copy size={12} className="text-indigo-400 group-hover:text-indigo-600 transition-colors" />
+              </button>
+            )}
+
+            {/* Connection Status */}
+            {roomCode && (
+              <div className={cn(
+                "flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-bold shrink-0",
+                isSyncing ? "bg-yellow-50 text-yellow-700" :
+                isConnected ? "bg-emerald-50 text-emerald-700" :
+                "bg-red-50 text-red-600"
+              )}>
+                {isSyncing ? (
+                  <><RefreshCw size={12} className="animate-spin" /> Đang đồng bộ...</>
+                ) : isConnected ? (
+                  <><Wifi size={12} /> Online</>
+                ) : (
+                  <><WifiOff size={12} /> Offline</>
+                )}
+              </div>
+            )}
+
             {isTeacher && (
               <button
                 onClick={() => {
