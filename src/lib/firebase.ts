@@ -60,6 +60,28 @@ function getFirebaseDB() {
 }
 
 /**
+ * Firebase tự động xoá mảng rỗng ([] → undefined)
+ * Hàm này đảm bảo tất cả arrays luôn tồn tại
+ */
+export function normalizeAppData(data: any): any {
+  if (!data) return data;
+  return {
+    ...data,
+    students: Array.isArray(data.students) ? data.students : [],
+    subjects: Array.isArray(data.subjects) ? data.subjects : [],
+    grades: Array.isArray(data.grades) ? data.grades : [],
+    behaviors: Array.isArray(data.behaviors) ? data.behaviors : [],
+    funds: Array.isArray(data.funds) ? data.funds : [],
+    attendance: Array.isArray(data.attendance) ? data.attendance : [],
+    tasks: Array.isArray(data.tasks) ? data.tasks : [],
+    submissions: Array.isArray(data.submissions) ? data.submissions : [],
+    admissionScores2025: Array.isArray(data.admissionScores2025) ? data.admissionScores2025 : [],
+    awards: Array.isArray(data.awards) ? data.awards : [],
+    settings: data.settings || { theme: 'light', apiKey: '', selectedModel: 'gemini-3-flash-preview', teacherPassword: '1234' }
+  };
+}
+
+/**
  * Tạo mã phòng 6 ký tự (chữ + số)
  */
 export function generateRoomCode(): string {
@@ -150,7 +172,7 @@ export function listenToRoomData(
   
   const unsubscribe = onValue(dataRef, (snapshot: DataSnapshot) => {
     if (snapshot.exists()) {
-      callback(snapshot.val());
+      callback(normalizeAppData(snapshot.val()));
     }
   });
   
@@ -181,7 +203,7 @@ export async function getRoomData(roomCode: string): Promise<any | null> {
   const db = getFirebaseDB();
   const snapshot = await get(ref(db, `rooms/${roomCode}/data`));
   if (snapshot.exists()) {
-    return snapshot.val();
+    return normalizeAppData(snapshot.val());
   }
   return null;
 }
