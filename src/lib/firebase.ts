@@ -5,7 +5,7 @@
  * Xem: https://console.firebase.google.com/ → Project Settings → General → Your apps → Web
  */
 
-import { initializeApp } from 'firebase/app';
+import { initializeApp, getApp } from 'firebase/app';
 import {
   getDatabase,
   ref,
@@ -42,10 +42,19 @@ let database: ReturnType<typeof getDatabase> | null = null;
 function getFirebaseDB() {
   if (!database) {
     if (!isFirebaseConfigured()) {
-      throw new Error('Firebase chưa được cấu hình. Hãy thay thế firebaseConfig trong src/lib/firebase.ts');
+      throw new Error('Firebase chưa được cấu hình.');
     }
-    app = initializeApp(firebaseConfig);
-    database = getDatabase(app);
+    try {
+      app = initializeApp(firebaseConfig);
+    } catch (e: any) {
+      // Nếu app đã được khởi tạo rồi (duplicate), lấy app hiện có
+      if (e.code === 'app/duplicate-app') {
+        app = getApp();
+      } else {
+        throw e;
+      }
+    }
+    database = getDatabase(app!);
   }
   return database;
 }
